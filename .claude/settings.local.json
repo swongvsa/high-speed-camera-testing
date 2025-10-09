@@ -28,7 +28,12 @@
       "WebSearch",
       "mcp__serena__get_symbols_overview",
       "Bash(git checkout:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(gh repo set-default:*)",
+      "Bash(gh api:*)",
+      "Bash(gh repo view:*)"
     ],
     "deny": [],
     "ask": []
