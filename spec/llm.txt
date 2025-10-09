@@ -1,0 +1,1790 @@
+# MindVision Industrial Camera SDK Specification (v2.4)
+## AI Developer Reference Guide
+
+---
+
+## 1. OVERVIEW
+
+This document summarizes the MindVision industrial camera SDK for high-speed camera integration.
+Target languages: C/C++, VB, Delphi, C#, Python (via ctypes/CFFI)
+Primary SDK: MVCAMSDK.DLL (Windows), libmvsdk.dylib (Mac)
+Compatible with: LabView, Halcon, OpenCV
+
+---
+
+## 2. CORE WORKFLOW
+
+### 2.1 Basic Camera Operation Sequence
+```
+1. CameraSdkInit(1)              // Initialize SDK (1=Chinese, 0=English)
+2. CameraEnumerateDevice()        // Enumerate connected cameras
+3. CameraInit()                   // Initialize specific camera, get handle
+4. CameraPlay()                   // Start image capture
+5. CameraGetImageBuffer()         // Acquire frame (with timeout)
+6. CameraImageProcess()           // Process RAW to RGB888/Gray
+7. CameraReleaseImageBuffer()     // Release buffer
+8. CameraUnInit()                 // Cleanup on exit (CRITICAL!)
+```
+
+### 2.2 Alternative Init Methods
+- `CameraInitEx(deviceIndex, ...)` - Initialize by index (0, 1, 2...)
+- `CameraInitEx2("CameraName", ...)` - Initialize by custom name
+
+---
+
+## 3. KEY DATA STRUCTURES
+
+### tSdkCameraDevInfo
+```c
+{
+    char acFriendlyName[64];      // Device nickname (customizable)
+    char acProductName[32];        // Product name
+    char acSensorType[32];         // Sensor type
+    char acPortType[32];           // Interface (USB2.0/USB3.0/GIGE)
+}
+```
+
+### tSdkFrameHead
+```c
+{
+    UINT uiMediaType;              // Image format (Bayer/YUV/RGB)
+    UINT iWidth, iHeight;          // Dimensions
+    UINT uiTimeStamp;              // Timestamp (0.1ms units)
+    UINT uiExpTime;                // Exposure time (microseconds)
+    float fAnalogGain;             // Analog gain multiplier
+}
+```
+
+### tSdkImageResolution
+```c
+{
+    INT iIndex;                    // 0-N: preset, 0xFF: custom ROI
+    INT iHOffsetFOV, iVOffsetFOV; // ROI offsets
+    INT iWidthFOV, iHeightFOV;    // ROI dimensions
+    INT iWidth, iHeight;           // Output dimensions
+    UINT uBinSumMode;              // BIN mode (0=off, 1=2x2, 4=4x4)
+    UINT uSkipMode;                // SKIP mode (0=off, 1=2x2, 4=4x4)
+}
+```
+
+---
+
+## 4. CRITICAL FUNCTIONS
+
+### 4.1 Image Acquisition (Two Methods)
+
+**Method A: Active Polling**
+```c
+CameraGetImageBuffer(hCamera, &frameInfo, &pBuffer, timeout_ms)
+// Returns: RAW data buffer (Bayer/YUV format)
+// MUST call CameraReleaseImageBuffer() after use
+```
+
+**Method B: Callback**
+```c
+CameraSetCallbackFunction(hCamera, callback_func, context, NULL)
+// Callback receives: (hCamera, pFrameBuffer, pFrameHead, pContext)
+```
+
+### 4.2 Image Processing
+```c
+CameraImageProcess(hCamera, pbyIn, pbyOut, pFrInfo)
+// Input: RAW Bayer/YUV data
+// Output: RGB888 or GRAY8 (configurable via CameraSetIspOutFormat)
+// Applies: white balance, gain, saturation, noise reduction, LUT
+```
+
+### 4.3 Format Control
+```c
+CameraSetIspOutFormat(hCamera, format)
+// Formats: CAMERA_MEDIA_TYPE_MONO8 (8-bit gray)
+//          CAMERA_MEDIA_TYPE_RGB8  (24-bit RGB)
+//          CAMERA_MEDIA_TYPE_BGR8  (24-bit BGR, for OpenCV)
+//          CAMERA_MEDIA_TYPE_RGBA8 (32-bit RGBA)
+//          CAMERA_MEDIA_TYPE_MONO16 (16-bit gray)
+//          CAMERA_MEDIA_TYPE_RGB16  (48-bit RGB)
+```
+
+---
+
+## 5. EXPOSURE & BRIGHTNESS
+
+### 5.1 Manual Exposure
+```c
+CameraSetAeState(hCamera, FALSE)              // Disable auto-exposure
+CameraSetExposureTime(hCamera, time_us)       // Set exposure (microseconds)
+CameraSetAnalogGain(hCamera, gain)            // Set analog gain
+```
+
+### 5.2 Auto-Exposure
+```c
+CameraSetAeState(hCamera, TRUE)               // Enable auto-exposure
+CameraSetAeTarget(hCamera, brightness)        // Target brightness
+CameraSetAEWindow(hCamera, x, y, w, h)        // AE reference window
+CameraSetAntiFlick(hCamera, TRUE)             // Anti-flicker (50/60Hz)
+CameraSetLightFrequency(hCamera, 0)           // 0=50Hz, 1=60Hz
+```
+
+---
+
+## 6. RESOLUTION & ROI
+
+### 6.1 Preset Resolution
+```c
+tSdkImageResolution res = {0};
+res.iIndex = 0;  // 0=MAX, 1=first preset, etc.
+CameraSetImageResolution(hCamera, &res);
+```
+
+### 6.2 Custom ROI (Region of Interest)
+```c
+tSdkImageResolution roi = {0};
+roi.iIndex = 0xFF;                    // 0xFF = custom
+roi.iWidthFOV = width;                // Must be multiple of 16
+roi.iHeightFOV = height;              // Must be multiple of 4
+roi.iHOffsetFOV = offsetX;            // Horizontal offset (16x)
+roi.iVOffsetFOV = offsetY;            // Vertical offset (4x)
+roi.iWidth = width;
+roi.iHeight = height;
+CameraSetImageResolution(hCamera, &roi);
+```
+
+**Note**: ROI can significantly increase frame rate by reducing data transfer.
+
+---
+
+## 7. TRIGGER MODES
+
+### 7.1 Continuous Mode (Default)
+```c
+CameraSetTriggerMode(hCamera, 0);  // Continuous capture
+```
+
+### 7.2 Software Trigger
+```c
+CameraSetTriggerMode(hCamera, 1);  // Software trigger mode
+CameraSoftTrigger(hCamera);        // Trigger one frame
+```
+
+### 7.3 Hardware (External) Trigger
+```c
+CameraSetTriggerMode(hCamera, 2);           // Hardware trigger mode
+CameraSetExtTrigSignalType(hCamera, type);  // 0=rising, 1=falling, 2=high, 3=low
+CameraSetExtTrigDelayTime(hCamera, delay_us); // Trigger delay
+CameraSetExtTrigJitterTime(hCamera, time_us); // Debounce time
+CameraSetTriggerCount(hCamera, N);          // Frames per trigger (default=1)
+```
+
+---
+
+## 8. ISP PARAMETERS (Image Enhancement)
+
+```c
+CameraSetGamma(hCamera, gamma);              // Gamma: 0-1000 (default=50 → 0.5)
+CameraSetContrast(hCamera, contrast);        // Contrast: 0-200 (default=100)
+CameraSetSaturation(hCamera, saturation);    // Saturation: 0-200 (0=grayscale)
+CameraSetSharpness(hCamera, sharpness);      // Sharpness: 0-100 (0=off)
+CameraSetGain(hCamera, R, G, B);             // RGB gain: 0-400 (default=100)
+```
+
+---
+
+## 9. WHITE BALANCE
+
+### Manual (One-Shot)
+```c
+CameraSetWbMode(hCamera, FALSE);   // Manual mode
+CameraSetOnceWB(hCamera);          // Execute one white balance
+```
+
+### Auto White Balance
+```c
+CameraSetWbMode(hCamera, TRUE);    // Auto mode
+CameraSetWbWindow(hCamera, x, y, w, h); // WB reference area
+```
+
+---
+
+## 10. MULTI-CAMERA SUPPORT
+
+### Method 1: By Index
+```c
+CameraEnumerateDeviceEx();         // Returns count
+CameraInitEx(0, ...);              // Camera #0
+CameraInitEx(1, ...);              // Camera #1
+```
+
+### Method 2: By Custom Name (Recommended)
+```c
+// 1. Use MindVision tool to rename cameras to "Camera1", "Camera2", etc.
+// 2. In code:
+CameraInitEx2("Camera1", &hCamera1);
+CameraInitEx2("Camera2", &hCamera2);
+```
+
+### Method 3: By Serial Number
+```c
+tSdkCameraDevInfo camList[10];
+int count = 10;
+CameraEnumerateDevice(camList, &count);
+// Check camList[i].acSn for serial number matching
+CameraInit(&camList[desired], ...);
+```
+
+---
+
+## 11. IMAGE SAVING & RECORDING
+
+### Save Single Image
+```c
+CameraSaveImage(hCamera, filepath, pBuffer, pFrameInfo, fileType, quality);
+// fileType: FILE_BMP=2, FILE_JPG=1, FILE_PNG=8, FILE_RAW=4
+// quality: 1-100 (JPG only)
+```
+
+### Recording Video
+```c
+CameraInitRecord(hCamera, format, savePath, b2GLimit, quality, frameRate);
+CameraPushFrame(hCamera, pImageBuffer, pFrameInfo);  // Each frame
+CameraStopRecord(hCamera);
+```
+
+---
+
+## 12. GPIO CONTROL (Hardware I/O)
+
+```c
+// Output IO (闪光灯控制/Strobe control)
+CameraSetIOState(hCamera, ioIndex, state);   // state: 1=HIGH, 0=LOW
+CameraGetIOState(hCamera, ioIndex, &state);  // Read input IO
+
+// Strobe Control (Synchronized with exposure)
+CameraSetStrobeMode(hCamera, mode);
+// mode: STROBE_SYNC_WITH_TRIG_AUTO, STROBE_SYNC_WITH_TRIG_MANUAL,
+//       STROBE_ALWAYS_HIGH, STROBE_ALWAYS_LOW
+CameraSetStrobeDelayTime(hCamera, delay_us);
+CameraSetStrobePulseWidth(hCamera, width_us);
+CameraSetStrobePolarity(hCamera, polarity);  // 0=low, 1=high active
+```
+
+---
+
+## 13. PARAMETER PERSISTENCE
+
+### Save/Load Parameter Groups (A, B, C, D)
+```c
+CameraSaveParameter(hCamera, PARAMETER_TEAM_A);  // Save to group A
+CameraLoadParameter(hCamera, PARAMETER_TEAM_B);  // Load from group B
+```
+
+### Parameter Storage Modes
+```c
+CameraSetParameterMode(hCamera, mode);
+// PARAM_MODE_BY_MODEL: All same model cameras share A/B/C/D
+// PARAM_MODE_BY_NAME: Cameras with same nickname share A/B/C/D
+// PARAM_MODE_BY_SN: Each camera (by serial) has unique A/B/C/D
+```
+
+### User Data (Custom Data in Camera)
+```c
+CameraSaveUserData(hCamera, startAddr, pData, len);  // Write to camera
+CameraLoadUserData(hCamera, startAddr, pData, len);  // Read from camera
+// Max length: tSdkCameraCapbility.iUserDataMaxLen
+// Address must be 64-byte aligned
+```
+
+---
+
+## 14. NETWORK CAMERA (GigE) SPECIFICS
+
+```c
+CameraGigeSetIp(...)  // Set camera IP/subnet/gateway dynamically
+// Use GigeConfig demo for reference
+// Enable Jumbo Frames on NIC for best performance
+```
+
+---
+
+## 15. ERROR HANDLING
+
+```c
+CameraSdkStatus status = CameraXXX(...);
+if (status != CAMERA_STATUS_SUCCESS) {
+    char* errMsg = CameraGetErrorString(status);
+    // Handle error
+}
+```
+
+### Common Error Codes
+- `0` (CAMERA_STATUS_SUCCESS): Success
+- `-12` (CAMERA_STATUS_TIME_OUT): Timeout
+- `-13` (CAMERA_STATUS_IO_ERROR): Hardware I/O error (check admin privileges)
+- `-16` (CAMERA_STATUS_NO_DEVICE_FOUND): No camera found
+- `-18` (CAMERA_STATUS_DEVICE_IS_OPENED): Device already open
+- `-38` (CAMERA_STATUS_DEVICE_LOST): Camera disconnected
+- `-45` (CAMERA_STATUS_ACCESS_DENY): Access denied (camera in use by another process)
+
+---
+
+## 16. ADVANCED FEATURES
+
+### 16.1 Frame Rate Control
+```c
+CameraSetFrameSpeed(hCamera, speed);
+// speed: 0=low, 1=normal, 2=high, 3=super (if supported)
+```
+
+### 16.2 BIN/SKIP Modes (Increase Speed, Reduce Resolution)
+```c
+// BIN 2x2 (average mode): 4 pixels → 1, better SNR
+roi.uBinAverageMode = 1;
+roi.iWidth = roi.iWidthFOV / 2;
+roi.iHeight = roi.iHeightFOV / 2;
+
+// SKIP 2x2: subsample every 2nd pixel
+roi.uSkipMode = 1;
+roi.iWidth = roi.iWidthFOV / 2;
+roi.iHeight = roi.iHeightFOV / 2;
+```
+
+### 16.3 Image Transformation
+```c
+CameraSetMirror(hCamera, 0, TRUE);      // Horizontal flip
+CameraSetMirror(hCamera, 1, TRUE);      // Vertical flip
+CameraSetRotate(hCamera, angle);        // angle: 0/1/2/3 → 0°/90°/180°/270°
+CameraSetMonochrome(hCamera, TRUE);     // Color→Grayscale conversion
+CameraSetInverse(hCamera, TRUE);        // Negative image
+```
+
+### 16.4 Image Overlay
+```c
+CameraSetCrossLine(hCamera, lineIndex, x, y, color, visible);
+// lineIndex: 0-8 (9 crosshairs available)
+CameraImageOverlay(hCamera, pRgbBuffer, pFrameInfo);
+// Overlays crosshair, AE window, WB window on image
+```
+
+### 16.5 Connection Monitoring
+```c
+CameraConnectTest(hCamera);  // Returns 0 if connected
+CameraReConnect(hCamera);    // Attempt reconnection
+```
+
+---
+
+## 17. PLATFORM-SPECIFIC NOTES
+
+### Windows
+- SDK: `MVCAMSDK.DLL` (System32 or app directory)
+- Lib: `MVCAMSDK.lib` (for C/C++ linking)
+- Admin privileges required on Win7+ (for registry access)
+- USB driver: Auto-install via Device Manager
+- GigE driver: Run `MvDriverInstall.exe`
+
+### Mac (M1)
+- SDK: `libmvsdk.dylib` (in lib/ folder)
+- Header: `CameraApi.h`, `CameraDefine.h`, `CameraStatus.h`
+- Demo app: `mac_basic.app`
+
+### Python Integration
+Use ctypes or CFFI to load DLL/dylib and call C functions.
+Example in `spec/python_demo/mvsdk.py` (2498 lines of Python bindings).
+
+---
+
+## 18. INTEGRATION WITH OTHER LIBRARIES
+
+### OpenCV
+```c
+CameraSetIspOutFormat(hCamera, CAMERA_MEDIA_TYPE_BGR8);
+// OpenCV uses BGR format
+// After CameraImageProcess, data is ready for cv::Mat
+```
+
+### Halcon
+- Use `open_framegrabber('MindVision', ...)` in HDevelop
+- Set color_space='Gray' or 'RGB24'
+- Access parameters via `set_framegrabber_param()`
+
+### LabView
+- Two methods: NI-IMAQdx or direct DLL call
+- Demo in `DEMO/Labview/useDLL/`
+- Supports multi-camera via `CameraInitEx`
+
+---
+
+## 19. PERFORMANCE OPTIMIZATION
+
+1. **Reduce CPU Load**:
+   - Use grayscale (MONO8) if color not needed
+   - Lower resolution or use ROI
+   - Disable unnecessary ISP (sharpness, noise reduction)
+   - Use hardware ISP cameras (GIGE/USB3.0)
+
+2. **Increase Frame Rate**:
+   - Reduce exposure time (requires better lighting)
+   - Use ROI (region of interest)
+   - Use BIN/SKIP modes
+   - Set `CameraSetFrameSpeed(hCamera, 2)` (high speed)
+   - Enable Jumbo Frames for GigE cameras
+
+3. **Memory Efficiency**:
+   - Use `CameraAlignMalloc(size, 16)` for aligned buffers
+   - Allocate buffers once, reuse in loop
+   - Release buffers with `CameraAlignFree(ptr)`
+
+---
+
+## 20. TYPICAL USAGE PATTERNS
+
+### Pattern 1: Continuous Acquisition + Display
+```c
+CameraSdkInit(1);
+CameraEnumerateDevice(...);
+CameraInit(..., &hCamera);
+CameraPlay(hCamera);
+
+while (running) {
+    if (CameraGetImageBuffer(hCamera, &frameInfo, &pRaw, 1000) == 0) {
+        CameraImageProcess(hCamera, pRaw, pRgb, &frameInfo);
+        CameraReleaseImageBuffer(hCamera, pRaw);
+        // Display pRgb...
+    }
+}
+
+CameraUnInit(hCamera);
+```
+
+### Pattern 2: Software Trigger + Save
+```c
+CameraInit(...);
+CameraSetTriggerMode(hCamera, 1);  // Software trigger
+CameraPlay(hCamera);
+
+for (int i = 0; i < N; i++) {
+    CameraSoftTrigger(hCamera);
+    CameraGetImageBuffer(hCamera, &frameInfo, &pRaw, 5000);
+    CameraImageProcess(hCamera, pRaw, pRgb, &frameInfo);
+    CameraSaveImage(hCamera, filepath, pRgb, &frameInfo, FILE_BMP, 0);
+    CameraReleaseImageBuffer(hCamera, pRaw);
+}
+
+CameraUnInit(hCamera);
+```
+
+### Pattern 3: Hardware Trigger + Callback
+```c
+void __stdcall FrameCallback(CameraHandle hCamera, BYTE *pRaw, 
+                              tSdkFrameHead *pFrameHead, PVOID pContext) {
+    CameraImageProcess(hCamera, pRaw, gRgbBuffer, pFrameHead);
+    // Process gRgbBuffer...
+}
+
+CameraInit(...);
+CameraSetCallbackFunction(hCamera, FrameCallback, NULL, NULL);
+CameraSetTriggerMode(hCamera, 2);  // Hardware trigger
+CameraPlay(hCamera);
+// Wait for external trigger signals...
+```
+
+---
+
+## 21. COMMON PITFALLS & SOLUTIONS
+
+1. **"Must call CameraUnInit before exit!"**
+   - Always call `CameraUnInit()` before program termination
+   - Failure causes memory errors
+
+2. **"Timeout errors in trigger mode"**
+   - Check trigger signal is valid (voltage/polarity)
+   - Verify trigger mode type (edge vs level)
+   - Increase timeout: `CameraGetImageBuffer(..., 10000)`
+
+3. **"Admin privileges required (error -13)"**
+   - Run as administrator on Win7+
+   - Or set app manifest to `requireAdministrator`
+
+4. **"Camera not found after reconnect"**
+   - Call `CameraReConnect(hCamera)`
+   - Or enumerate again and reinitialize
+
+5. **"Image colors wrong"**
+   - Check `CameraSetIspOutFormat()` matches your display format
+   - OpenCV needs BGR8, Qt needs RGB8
+   - Perform white balance: `CameraSetOnceWB()`
+
+6. **"Low frame rate"**
+   - Reduce exposure time
+   - Use ROI or lower resolution
+   - Check `CameraSetFrameSpeed(hCamera, 2)`
+   - Enable Jumbo Frames (GigE)
+
+---
+
+## 22. QUICK REFERENCE: FUNCTION CATEGORIES
+
+**Init/Deinit**: CameraSdkInit, CameraInit, CameraInitEx, CameraInitEx2, CameraUnInit
+**Enumeration**: CameraEnumerateDevice, CameraEnumerateDeviceEx
+**Control**: CameraPlay, CameraPause, CameraStop
+**Acquisition**: CameraGetImageBuffer, CameraGetImageBufferEx, CameraReleaseImageBuffer, CameraSetCallbackFunction
+**Processing**: CameraImageProcess, CameraImageProcessEx
+**Display**: CameraDisplayInit, CameraDisplayRGB24, CameraSetDisplayMode, CameraImageOverlay
+**Exposure**: CameraSetAeState, CameraSetExposureTime, CameraSetAnalogGain, CameraSetAeTarget, CameraSetAEWindow
+**WB**: CameraSetWbMode, CameraSetOnceWB, CameraSetWbWindow
+**ISP**: CameraSetGamma, CameraSetContrast, CameraSetSaturation, CameraSetSharpness, CameraSetGain
+**Resolution**: CameraSetImageResolution, CameraGetImageResolution, CameraCustomizeResolution
+**Trigger**: CameraSetTriggerMode, CameraSoftTrigger, CameraSetTriggerCount, CameraSetExtTrigSignalType
+**GPIO**: CameraSetIOState, CameraGetIOState, CameraSetStrobeMode
+**Save/Load**: CameraSaveImage, CameraInitRecord, CameraPushFrame, CameraStopRecord
+**Params**: CameraSaveParameter, CameraLoadParameter, CameraSaveUserData, CameraLoadUserData
+**Info**: CameraGetCapability, CameraGetInformation, CameraGetEnumInfo, CameraGetFrameStatistic
+**Error**: CameraGetErrorString
+**Network**: CameraGigeSetIp (see GigeConfig demo)
+
+---
+
+## 23. PYTHON IMPLEMENTATION GUIDE
+
+### 23.1 SDK Loading (Cross-Platform)
+
+**Reference**: `spec/python_demo/mvsdk.py`
+
+```python
+import platform
+from ctypes import *
+
+# Determine platform and load appropriate library
+is_win = platform.system() == "Windows"
+is_x86 = platform.architecture()[0] == "32bit"
+
+if is_win:
+    _sdk = windll.MVCAMSDK if is_x86 else windll.MVCAMSDK_X64
+    CALLBACK_FUNC_TYPE = WINFUNCTYPE
+else:
+    if platform.system() == "Darwin":  # macOS
+        _sdk = cdll.LoadLibrary("libmvsdk.dylib")
+    else:  # Linux
+        _sdk = cdll.LoadLibrary("libMVSDK.so")
+    CALLBACK_FUNC_TYPE = CFUNCTYPE
+
+# Initialize SDK (must be called before any other function)
+_sdk.CameraSdkInit(1)  # 1 = Chinese, 0 = English
+```
+
+---
+
+### 23.2 Essential Structure Definitions
+
+```python
+from ctypes import *
+
+# Camera device info structure
+class tSdkCameraDevInfo(Structure):
+    _fields_ = [
+        ("acProductSeries", c_char * 32),   # Product series
+        ("acProductName", c_char * 32),     # Product name
+        ("acFriendlyName", c_char * 32),    # Device nickname
+        ("acLinkName", c_char * 32),        # Kernel link name
+        ("acDriverVersion", c_char * 32),   # Driver version
+        ("acSensorType", c_char * 32),      # Sensor type
+        ("acPortType", c_char * 32),        # Interface type (USB/GigE)
+        ("acSn", c_char * 32),              # Unique serial number
+        ("uInstance", c_uint)               # Instance index
+    ]
+    
+    def GetFriendlyName(self):
+        return self.acFriendlyName.decode('gbk')
+    
+    def GetPortType(self):
+        return self.acPortType.decode('gbk')
+    
+    def GetSn(self):
+        return self.acSn.decode('gbk')
+
+# Frame header structure
+class tSdkFrameHead(Structure):
+    _fields_ = [
+        ("uiMediaType", c_uint),       # Image format
+        ("uBytes", c_uint),            # Total bytes
+        ("iWidth", c_int),             # Width
+        ("iHeight", c_int),            # Height
+        ("iWidthZoomSw", c_int),       # Software zoom width
+        ("iHeightZoomSw", c_int),      # Software zoom height
+        ("bIsTrigger", c_int),         # Is trigger frame
+        ("uiTimeStamp", c_uint),       # Timestamp (0.1ms units)
+        ("uiExpTime", c_uint),         # Exposure time (us)
+        ("fAnalogGain", c_float),      # Analog gain multiplier
+        ("iGamma", c_int),             # Gamma value
+        ("iContrast", c_int),          # Contrast value
+        ("iSaturation", c_int),        # Saturation value
+        ("fRgain", c_float),           # Red gain
+        ("fGgain", c_float),           # Green gain
+        ("fBgain", c_float),           # Blue gain
+    ]
+
+# Resolution range structure
+class tSdkResolutionRange(Structure):
+    _fields_ = [
+        ("iHeightMax", c_int),         # Max height
+        ("iHeightMin", c_int),         # Min height
+        ("iWidthMax", c_int),          # Max width
+        ("iWidthMin", c_int),          # Min width
+        ("uSkipModeMask", c_uint),     # SKIP mode mask
+        ("uBinSumModeMask", c_uint),   # BIN sum mode mask
+        ("uBinAverageModeMask", c_uint), # BIN average mode mask
+        ("uResampleMask", c_uint)      # Resample mask
+    ]
+
+# ISP capacity structure
+class tSdkIspCapacity(Structure):
+    _fields_ = [
+        ("bMonoSensor", c_int),        # Is mono camera
+        ("bWbOnce", c_int),            # Supports manual WB
+        ("bAutoWb", c_int),            # Supports auto WB
+        ("bAutoExposure", c_int),      # Supports auto exposure
+        ("bManualExposure", c_int),    # Supports manual exposure
+        ("bAntiFlick", c_int),         # Supports anti-flicker
+        ("bDeviceIsp", c_int),         # Has hardware ISP
+        ("bForceUseDeviceIsp", c_int), # Force hardware ISP
+        ("bZoomHD", c_int),            # Supports hardware zoom
+    ]
+
+# Camera capability structure (contains all above)
+class tSdkCameraCapbility(Structure):
+    _fields_ = [
+        # ... pointer fields for trigger, resolution, color temp, etc ...
+        ("sResolutionRange", tSdkResolutionRange),
+        ("sIspCapacity", tSdkIspCapacity),
+        # ... other range descriptors ...
+    ]
+
+# Frame statistics
+class tSdkFrameStatistic(Structure):
+    _fields_ = [
+        ("iTotal", c_int),      # Total frames
+        ("iCapture", c_int),    # Captured frames
+        ("iLost", c_int),       # Lost frames
+    ]
+```
+
+---
+
+### 23.3 Exception Handling Pattern
+
+```python
+class CameraException(Exception):
+    """Camera SDK exception with error code"""
+    def __init__(self, error_code):
+        self.error_code = error_code
+        self.message = CameraGetErrorString(error_code)
+        super().__init__(f"Error {error_code}: {self.message}")
+
+# Wrapper function example
+def CameraInit(pCameraInfo, emParamLoadMode=-1, emTeam=-1):
+    """Initialize camera and return handle"""
+    pCameraHandle = c_int()
+    err_code = _sdk.CameraInit(
+        byref(pCameraInfo), 
+        emParamLoadMode, 
+        emTeam, 
+        byref(pCameraHandle)
+    )
+    if err_code != 0:
+        raise CameraException(err_code)
+    return pCameraHandle.value
+
+# Usage with exception handling
+try:
+    hCamera = CameraInit(DevInfo, -1, -1)
+except CameraException as e:
+    print(f"Init failed({e.error_code}): {e.message}")
+```
+
+---
+
+### 23.4 Pattern 1: Continuous Capture (Polling)
+
+**Reference**: `spec/python_demo/cv_grab.py`
+
+```python
+import mvsdk
+import numpy as np
+import cv2
+import platform
+
+def continuous_capture_opencv():
+    """Complete example: enumerate → init → capture loop → cleanup"""
+    
+    # 1. Enumerate cameras
+    DevList = mvsdk.CameraEnumerateDevice()
+    if len(DevList) < 1:
+        print("No camera found!")
+        return
+    
+    # 2. Select camera
+    DevInfo = DevList[0]  # Use first camera
+    print(f"Using: {DevInfo.GetFriendlyName()} {DevInfo.GetPortType()}")
+    
+    # 3. Initialize camera
+    try:
+        hCamera = mvsdk.CameraInit(DevInfo, -1, -1)
+    except mvsdk.CameraException as e:
+        print(f"CameraInit Failed({e.error_code}): {e.message}")
+        return
+    
+    # 4. Get camera capabilities
+    cap = mvsdk.CameraGetCapability(hCamera)
+    
+    # 5. Determine mono vs color
+    monoCamera = (cap.sIspCapacity.bMonoSensor != 0)
+    
+    # 6. Set output format (CRITICAL!)
+    if monoCamera:
+        mvsdk.CameraSetIspOutFormat(hCamera, mvsdk.CAMERA_MEDIA_TYPE_MONO8)
+    else:
+        mvsdk.CameraSetIspOutFormat(hCamera, mvsdk.CAMERA_MEDIA_TYPE_BGR8)
+    
+    # 7. Set continuous capture mode
+    mvsdk.CameraSetTriggerMode(hCamera, 0)  # 0 = continuous
+    
+    # 8. Optional: Set manual exposure (remove for auto)
+    mvsdk.CameraSetAeState(hCamera, 0)      # 0 = manual
+    mvsdk.CameraSetExposureTime(hCamera, 30 * 1000)  # 30ms
+    
+    # 9. Start streaming
+    mvsdk.CameraPlay(hCamera)
+    
+    # 10. Allocate frame buffer (16-byte aligned for SIMD)
+    channels = 1 if monoCamera else 3
+    FrameBufferSize = (cap.sResolutionRange.iWidthMax * 
+                       cap.sResolutionRange.iHeightMax * channels)
+    pFrameBuffer = mvsdk.CameraAlignMalloc(FrameBufferSize, 16)
+    
+    # 11. Capture loop
+    try:
+        while (cv2.waitKey(1) & 0xFF) != ord('q'):
+            try:
+                # Get RAW frame (200ms timeout)
+                pRawData, FrameHead = mvsdk.CameraGetImageBuffer(hCamera, 200)
+                
+                # Process RAW → RGB/MONO
+                mvsdk.CameraImageProcess(hCamera, pRawData, pFrameBuffer, FrameHead)
+                
+                # MUST release RAW buffer
+                mvsdk.CameraReleaseImageBuffer(hCamera, pRawData)
+                
+                # Windows-specific: flip vertically (BMP format quirk)
+                if platform.system() == "Windows":
+                    mvsdk.CameraFlipFrameBuffer(pFrameBuffer, FrameHead, 1)
+                
+                # Convert to NumPy (zero-copy using from_address)
+                frame_data = (mvsdk.c_ubyte * FrameHead.uBytes).from_address(pFrameBuffer)
+                frame = np.frombuffer(frame_data, dtype=np.uint8)
+                
+                # Reshape based on format
+                if FrameHead.uiMediaType == mvsdk.CAMERA_MEDIA_TYPE_MONO8:
+                    frame = frame.reshape((FrameHead.iHeight, FrameHead.iWidth))
+                else:
+                    frame = frame.reshape((FrameHead.iHeight, FrameHead.iWidth, 3))
+                
+                # Display with OpenCV
+                cv2.imshow("Camera Feed - Press 'q' to quit", frame)
+                
+            except mvsdk.CameraException as e:
+                # Timeout is normal, continue
+                if e.error_code != mvsdk.CAMERA_STATUS_TIME_OUT:
+                    print(f"Capture failed({e.error_code}): {e.message}")
+    
+    finally:
+        # 12. Cleanup (CRITICAL!)
+        mvsdk.CameraUnInit(hCamera)
+        mvsdk.CameraAlignFree(pFrameBuffer)
+        cv2.destroyAllWindows()
+
+# Run
+continuous_capture_opencv()
+```
+
+**Key Points**:
+- ✅ Use `CameraAlignMalloc(size, 16)` for aligned buffers
+- ✅ Always call `CameraReleaseImageBuffer()` after `CameraGetImageBuffer()`
+- ✅ Windows requires vertical flip (`CameraFlipFrameBuffer`)
+- ✅ Use `np.frombuffer()` for zero-copy NumPy conversion
+- ✅ Timeout exceptions are normal, continue the loop
+- ✅ Always call `CameraUnInit()` and `CameraAlignFree()` in cleanup
+
+---
+
+### 23.5 Pattern 2: Callback-Based Capture
+
+**Reference**: `spec/python_demo/cv_grab_callback.py`
+
+```python
+import mvsdk
+import numpy as np
+import cv2
+import platform
+import time
+
+class CameraApp:
+    def __init__(self):
+        self.pFrameBuffer = 0
+        self.quit = False
+        self.hCamera = 0
+    
+    def start(self):
+        # 1. Enumerate
+        DevList = mvsdk.CameraEnumerateDevice()
+        if len(DevList) < 1:
+            print("No camera found!")
+            return
+        
+        DevInfo = DevList[0]
+        
+        # 2. Initialize
+        try:
+            self.hCamera = mvsdk.CameraInit(DevInfo, -1, -1)
+        except mvsdk.CameraException as e:
+            print(f"CameraInit Failed({e.error_code}): {e.message}")
+            return
+        
+        # 3. Get capabilities
+        cap = mvsdk.CameraGetCapability(self.hCamera)
+        monoCamera = (cap.sIspCapacity.bMonoSensor != 0)
+        
+        # 4. Configure format
+        if monoCamera:
+            mvsdk.CameraSetIspOutFormat(self.hCamera, mvsdk.CAMERA_MEDIA_TYPE_MONO8)
+        else:
+            mvsdk.CameraSetIspOutFormat(self.hCamera, mvsdk.CAMERA_MEDIA_TYPE_BGR8)
+        
+        # 5. Set continuous mode
+        mvsdk.CameraSetTriggerMode(self.hCamera, 0)
+        
+        # 6. Manual exposure
+        mvsdk.CameraSetAeState(self.hCamera, 0)
+        mvsdk.CameraSetExposureTime(self.hCamera, 30 * 1000)
+        
+        # 7. Allocate buffer
+        channels = 1 if monoCamera else 3
+        FrameBufferSize = (cap.sResolutionRange.iWidthMax * 
+                           cap.sResolutionRange.iHeightMax * channels)
+        self.pFrameBuffer = mvsdk.CameraAlignMalloc(FrameBufferSize, 16)
+        
+        # 8. Set callback BEFORE starting capture
+        mvsdk.CameraSetCallbackFunction(self.hCamera, self.GrabCallback, 0)
+        
+        # 9. Start streaming
+        mvsdk.CameraPlay(self.hCamera)
+        
+        # 10. Wait for user quit
+        while not self.quit:
+            time.sleep(0.1)
+        
+        # 11. Cleanup
+        mvsdk.CameraUnInit(self.hCamera)
+        mvsdk.CameraAlignFree(self.pFrameBuffer)
+    
+    @mvsdk.method(mvsdk.CAMERA_SNAP_PROC)
+    def GrabCallback(self, hCamera, pRawData, pFrameHead, pContext):
+        """
+        Callback executed for each captured frame.
+        Runs in SDK's internal capture thread.
+        """
+        FrameHead = pFrameHead[0]  # Dereference pointer
+        
+        # Process RAW → RGB
+        mvsdk.CameraImageProcess(hCamera, pRawData, self.pFrameBuffer, FrameHead)
+        
+        # Windows-specific flip
+        if platform.system() == "Windows":
+            mvsdk.CameraFlipFrameBuffer(self.pFrameBuffer, FrameHead, 1)
+        
+        # Convert to NumPy
+        frame_data = (mvsdk.c_ubyte * FrameHead.uBytes).from_address(self.pFrameBuffer)
+        frame = np.frombuffer(frame_data, dtype=np.uint8)
+        
+        # Reshape
+        if FrameHead.uiMediaType == mvsdk.CAMERA_MEDIA_TYPE_MONO8:
+            frame = frame.reshape((FrameHead.iHeight, FrameHead.iWidth))
+        else:
+            frame = frame.reshape((FrameHead.iHeight, FrameHead.iWidth, 3))
+        
+        # Display
+        cv2.imshow("Callback Mode - Press 'q' to quit", frame)
+        if (cv2.waitKey(1) & 0xFF) == ord('q'):
+            self.quit = True
+
+# Run
+app = CameraApp()
+app.start()
+cv2.destroyAllWindows()
+```
+
+**Callback Notes**:
+- Use `@mvsdk.method(mvsdk.CAMERA_SNAP_PROC)` decorator for callback methods
+- Callback runs in SDK thread, keep processing minimal
+- Don't call `CameraReleaseImageBuffer()` in callback (SDK handles it)
+- Callback signature: `(hCamera, pRawData, pFrameHead, pContext)`
+
+---
+
+### 23.6 Pattern 3: Single-Shot Capture & Save
+
+**Reference**: `spec/python_demo/grab.py`
+
+```python
+import mvsdk
+
+def capture_and_save_image():
+    """Capture one frame and save to disk"""
+    
+    # 1. Enumerate
+    DevList = mvsdk.CameraEnumerateDevice()
+    if len(DevList) < 1:
+        print("No camera found!")
+        return
+    
+    DevInfo = DevList[0]
+    
+    # 2. Initialize
+    try:
+        hCamera = mvsdk.CameraInit(DevInfo, -1, -1)
+    except mvsdk.CameraException as e:
+        print(f"CameraInit Failed({e.error_code}): {e.message}")
+        return
+    
+    # 3. Get capability
+    cap = mvsdk.CameraGetCapability(hCamera)
+    monoCamera = (cap.sIspCapacity.bMonoSensor != 0)
+    
+    # 4. Configure
+    if monoCamera:
+        mvsdk.CameraSetIspOutFormat(hCamera, mvsdk.CAMERA_MEDIA_TYPE_MONO8)
+    
+    mvsdk.CameraSetTriggerMode(hCamera, 0)  # Continuous mode
+    
+    # 5. Manual exposure
+    mvsdk.CameraSetAeState(hCamera, 0)
+    mvsdk.CameraSetExposureTime(hCamera, 30 * 1000)
+    
+    # 6. Start streaming
+    mvsdk.CameraPlay(hCamera)
+    
+    # 7. Allocate buffer
+    channels = 1 if monoCamera else 3
+    FrameBufferSize = (cap.sResolutionRange.iWidthMax * 
+                       cap.sResolutionRange.iHeightMax * channels)
+    pFrameBuffer = mvsdk.CameraAlignMalloc(FrameBufferSize, 16)
+    
+    # 8. Capture one frame
+    try:
+        pRawData, FrameHead = mvsdk.CameraGetImageBuffer(hCamera, 2000)
+        mvsdk.CameraImageProcess(hCamera, pRawData, pFrameBuffer, FrameHead)
+        mvsdk.CameraReleaseImageBuffer(hCamera, pRawData)
+        
+        # 9. Save image
+        status = mvsdk.CameraSaveImage(
+            hCamera, 
+            "./capture.bmp",     # Filename
+            pFrameBuffer,        # Processed buffer (not RAW!)
+            FrameHead,           # Frame info
+            mvsdk.FILE_BMP,      # Format: FILE_BMP, FILE_JPG, FILE_PNG, FILE_RAW
+            100                  # Quality (1-100, JPG only)
+        )
+        
+        if status == mvsdk.CAMERA_STATUS_SUCCESS:
+            print(f"Saved: {FrameHead.iWidth}×{FrameHead.iHeight}")
+        else:
+            print(f"Save failed: {status}")
+            
+    except mvsdk.CameraException as e:
+        print(f"Capture failed({e.error_code}): {e.message}")
+    
+    finally:
+        # 10. Cleanup
+        mvsdk.CameraUnInit(hCamera)
+        mvsdk.CameraAlignFree(pFrameBuffer)
+
+capture_and_save_image()
+```
+
+---
+
+### 23.7 Pattern 4: Multi-Camera Support
+
+**Reference**: `spec/python_demo/cv_grab2.py`
+
+```python
+import mvsdk
+import numpy as np
+import cv2
+import platform
+
+class Camera:
+    """Single camera wrapper"""
+    
+    def __init__(self, DevInfo):
+        self.DevInfo = DevInfo
+        self.hCamera = 0
+        self.cap = None
+        self.pFrameBuffer = 0
+    
+    def open(self):
+        """Initialize and start camera"""
+        if self.hCamera > 0:
+            return True
+        
+        try:
+            # Init
+            hCamera = mvsdk.CameraInit(self.DevInfo, -1, -1)
+            
+            # Get capability
+            cap = mvsdk.CameraGetCapability(hCamera)
+            monoCamera = (cap.sIspCapacity.bMonoSensor != 0)
+            
+            # Set format
+            if monoCamera:
+                mvsdk.CameraSetIspOutFormat(hCamera, mvsdk.CAMERA_MEDIA_TYPE_MONO8)
+            else:
+                mvsdk.CameraSetIspOutFormat(hCamera, mvsdk.CAMERA_MEDIA_TYPE_BGR8)
+            
+            # Allocate buffer
+            channels = 1 if monoCamera else 3
+            FrameBufferSize = (cap.sResolutionRange.iWidthMax * 
+                               cap.sResolutionRange.iHeightMax * channels)
+            pFrameBuffer = mvsdk.CameraAlignMalloc(FrameBufferSize, 16)
+            
+            # Set continuous mode
+            mvsdk.CameraSetTriggerMode(hCamera, 0)
+            
+            # Manual exposure
+            mvsdk.CameraSetAeState(hCamera, 0)
+            mvsdk.CameraSetExposureTime(hCamera, 30 * 1000)
+            
+            # Start
+            mvsdk.CameraPlay(hCamera)
+            
+            # Store state
+            self.hCamera = hCamera
+            self.pFrameBuffer = pFrameBuffer
+            self.cap = cap
+            return True
+            
+        except mvsdk.CameraException as e:
+            print(f"Camera open failed({e.error_code}): {e.message}")
+            return False
+    
+    def grab(self):
+        """Grab one frame, return NumPy array or None"""
+        try:
+            pRawData, FrameHead = mvsdk.CameraGetImageBuffer(self.hCamera, 200)
+            mvsdk.CameraImageProcess(self.hCamera, pRawData, self.pFrameBuffer, FrameHead)
+            mvsdk.CameraReleaseImageBuffer(self.hCamera, pRawData)
+            
+            # Windows flip
+            if platform.system() == "Windows":
+                mvsdk.CameraFlipFrameBuffer(self.pFrameBuffer, FrameHead, 1)
+            
+            # Convert to NumPy
+            frame_data = (mvsdk.c_ubyte * FrameHead.uBytes).from_address(self.pFrameBuffer)
+            frame = np.frombuffer(frame_data, dtype=np.uint8)
+            
+            # Reshape
+            if FrameHead.uiMediaType == mvsdk.CAMERA_MEDIA_TYPE_MONO8:
+                frame = frame.reshape((FrameHead.iHeight, FrameHead.iWidth))
+            else:
+                frame = frame.reshape((FrameHead.iHeight, FrameHead.iWidth, 3))
+            
+            return frame
+            
+        except mvsdk.CameraException as e:
+            if e.error_code != mvsdk.CAMERA_STATUS_TIME_OUT:
+                print(f"Grab failed({e.error_code}): {e.message}")
+            return None
+    
+    def close(self):
+        """Cleanup camera resources"""
+        if self.hCamera > 0:
+            mvsdk.CameraUnInit(self.hCamera)
+            self.hCamera = 0
+        
+        if self.pFrameBuffer:
+            mvsdk.CameraAlignFree(self.pFrameBuffer)
+            self.pFrameBuffer = 0
+
+# Usage: Multiple cameras
+DevList = mvsdk.CameraEnumerateDevice()
+print(f"Found {len(DevList)} camera(s)")
+
+# Open multiple cameras
+cameras = []
+for i, DevInfo in enumerate(DevList):
+    cam = Camera(DevInfo)
+    if cam.open():
+        cameras.append(cam)
+        print(f"Opened: {DevInfo.GetFriendlyName()}")
+
+# Capture loop
+while (cv2.waitKey(1) & 0xFF) != ord('q'):
+    for cam in cameras:
+        frame = cam.grab()
+        if frame is not None:
+            cv2.imshow(f"{cam.DevInfo.GetFriendlyName()}", frame)
+
+# Cleanup all cameras
+for cam in cameras:
+    cam.close()
+
+cv2.destroyAllWindows()
+```
+
+---
+
+### 23.8 Common Python Wrapper Functions
+
+**From `spec/python_demo/mvsdk.py` (2498 lines)**
+
+```python
+# Enumeration
+def CameraEnumerateDevice(MaxCount=32):
+    """Enumerate connected cameras"""
+    Nums = c_int(MaxCount)
+    pCameraList = (tSdkCameraDevInfo * Nums.value)()
+    err_code = _sdk.CameraEnumerateDevice(pCameraList, byref(Nums))
+    if err_code != 0:
+        raise CameraException(err_code)
+    return pCameraList[0:Nums.value]  # Return actual camera list
+
+# Image buffer management
+def CameraGetImageBuffer(hCamera, wTimes):
+    """Get RAW frame buffer"""
+    pbyBuffer = c_void_p()
+    pFrameInfo = tSdkFrameHead()
+    err_code = _sdk.CameraGetImageBuffer(hCamera, byref(pFrameInfo), 
+                                          byref(pbyBuffer), wTimes)
+    if err_code != 0:
+        raise CameraException(err_code)
+    return (pbyBuffer.value, pFrameInfo)
+
+def CameraReleaseImageBuffer(hCamera, pbyBuffer):
+    """Release RAW buffer (MUST call after GetImageBuffer)"""
+    err_code = _sdk.CameraReleaseImageBuffer(hCamera, c_void_p(pbyBuffer))
+    return err_code
+
+# Image processing
+def CameraImageProcess(hCamera, pbyIn, pbyOut, pFrInfo):
+    """Process RAW → RGB/MONO"""
+    err_code = _sdk.CameraImageProcess(hCamera, c_void_p(pbyIn), 
+                                        c_void_p(pbyOut), byref(pFrInfo))
+    return err_code
+
+# Memory allocation
+def CameraAlignMalloc(size, align=16):
+    """Allocate aligned memory for SIMD optimization"""
+    _sdk.CameraAlignMalloc.restype = c_void_p
+    return _sdk.CameraAlignMalloc(size, align)
+
+def CameraAlignFree(membuffer):
+    """Free aligned memory"""
+    _sdk.CameraAlignFree(c_void_p(membuffer))
+
+# Capability query
+def CameraGetCapability(hCamera):
+    """Get camera hardware capabilities"""
+    pCameraInfo = tSdkCameraCapbility()
+    err_code = _sdk.CameraGetCapability(hCamera, byref(pCameraInfo))
+    if err_code != 0:
+        raise CameraException(err_code)
+    return pCameraInfo
+
+# Format control
+def CameraSetIspOutFormat(hCamera, uFormat):
+    """Set output format: MONO8, BGR8, RGB8, RGBA8, etc."""
+    err_code = _sdk.CameraSetIspOutFormat(hCamera, uFormat)
+    return err_code
+
+# Trigger mode
+def CameraSetTriggerMode(hCamera, iModeSel):
+    """Set trigger mode: 0=continuous, 1=software, 2=hardware"""
+    err_code = _sdk.CameraSetTriggerMode(hCamera, iModeSel)
+    return err_code
+
+# Exposure control
+def CameraSetAeState(hCamera, bAeState):
+    """Enable/disable auto-exposure: 0=manual, 1=auto"""
+    err_code = _sdk.CameraSetAeState(hCamera, bAeState)
+    return err_code
+
+def CameraSetExposureTime(hCamera, fExposureTime):
+    """Set exposure time in microseconds"""
+    err_code = _sdk.CameraSetExposureTime(hCamera, c_double(fExposureTime))
+    return err_code
+
+# Frame speed control
+def CameraSetFrameSpeed(hCamera, iFrameSpeed):
+    """Set frame speed: 0=low, 1=normal, 2=high, 3=super"""
+    err_code = _sdk.CameraSetFrameSpeed(hCamera, iFrameSpeed)
+    return err_code
+
+# Error messages
+def CameraGetErrorString(iStatusCode):
+    """Get error description for status code"""
+    _sdk.CameraGetErrorString.restype = c_char_p
+    msg = _sdk.CameraGetErrorString(iStatusCode)
+    if msg:
+        try:
+            return msg.decode('gbk')
+        except:
+            return msg.decode('utf-8')
+    return ''
+
+# Connection monitoring
+def CameraConnectTest(hCamera):
+    """Test if camera is still connected (returns 0 if OK)"""
+    err_code = _sdk.CameraConnectTest(hCamera)
+    return err_code
+
+def CameraReConnect(hCamera):
+    """Attempt to reconnect disconnected camera"""
+    err_code = _sdk.CameraReConnect(hCamera)
+    return err_code
+
+# Frame statistics
+def CameraGetFrameStatistic(hCamera):
+    """Get frame capture statistics"""
+    psFrameStatistic = tSdkFrameStatistic()
+    err_code = _sdk.CameraGetFrameStatistic(hCamera, byref(psFrameStatistic))
+    return psFrameStatistic
+
+# Image saving
+def CameraSaveImage(hCamera, lpszFileName, pbyImageBuffer, pFrInfo, byFileType, byQuality):
+    """
+    Save processed image to file.
+    
+    Args:
+        lpszFileName: Output path (str)
+        pbyImageBuffer: Processed buffer (from CameraImageProcess)
+        pFrInfo: Frame header
+        byFileType: FILE_BMP=2, FILE_JPG=1, FILE_PNG=8, FILE_RAW=4
+        byQuality: 1-100 (JPG only)
+    """
+    err_code = _sdk.CameraSaveImage(
+        hCamera, 
+        lpszFileName.encode('gbk'),  # Convert to bytes
+        c_void_p(pbyImageBuffer), 
+        byref(pFrInfo), 
+        byFileType, 
+        byQuality
+    )
+    return err_code
+```
+
+---
+
+### 23.9 Python-Specific Best Practices
+
+#### 1. **Platform Detection**
+```python
+import platform
+
+if platform.system() == "Windows":
+    # Windows: Flip frame buffer vertically
+    mvsdk.CameraFlipFrameBuffer(pFrameBuffer, FrameHead, 1)
+elif platform.system() == "Darwin":
+    # macOS: No flip needed
+    pass
+else:
+    # Linux: No flip needed
+    pass
+```
+
+#### 2. **String Encoding** (Chinese SDK)
+```python
+def _string_buffer_to_str(buf):
+    """Decode SDK strings (may be GBK or UTF-8)"""
+    s = buf if isinstance(buf, bytes) else buf.value
+    
+    for codec in ('gbk', 'utf-8'):
+        try:
+            return s.decode(codec)
+        except UnicodeDecodeError:
+            continue
+    
+    return str(s)
+```
+
+#### 3. **Zero-Copy NumPy Conversion**
+```python
+# EFFICIENT: Create NumPy array from SDK buffer address (no copy)
+frame_data = (mvsdk.c_ubyte * FrameHead.uBytes).from_address(pFrameBuffer)
+frame = np.frombuffer(frame_data, dtype=np.uint8)
+
+# SLOW (don't do this): Copy data
+# frame = np.array([frame_data[i] for i in range(FrameHead.uBytes)])
+```
+
+#### 4. **Context Manager Pattern**
+```python
+class Camera:
+    def __enter__(self):
+        self.open()
+        return self
+    
+    def __exit__(self, *args):
+        self.close()
+        return False  # Don't suppress exceptions
+
+# Usage
+with Camera(DevInfo) as cam:
+    frame = cam.grab()
+    # Auto-cleanup on exit
+```
+
+#### 5. **Thread-Safe Callbacks**
+```python
+# Use @mvsdk.method decorator for callback methods
+class App:
+    @mvsdk.method(mvsdk.CAMERA_SNAP_PROC)
+    def GrabCallback(self, hCamera, pRawData, pFrameHead, pContext):
+        # This ensures proper C callback signature
+        pass
+```
+
+---
+
+### 23.10 Complete Minimal Example (15 Lines)
+
+```python
+import mvsdk
+
+# Enumerate & init
+DevList = mvsdk.CameraEnumerateDevice()
+hCamera = mvsdk.CameraInit(DevList[0], -1, -1)
+
+# Configure
+cap = mvsdk.CameraGetCapability(hCamera)
+mvsdk.CameraSetIspOutFormat(hCamera, mvsdk.CAMERA_MEDIA_TYPE_BGR8)
+mvsdk.CameraSetTriggerMode(hCamera, 0)
+
+# Start & allocate
+mvsdk.CameraPlay(hCamera)
+pBuffer = mvsdk.CameraAlignMalloc(cap.sResolutionRange.iWidthMax * 
+                                   cap.sResolutionRange.iHeightMax * 3, 16)
+
+# Capture one frame
+pRaw, FrameHead = mvsdk.CameraGetImageBuffer(hCamera, 1000)
+mvsdk.CameraImageProcess(hCamera, pRaw, pBuffer, FrameHead)
+mvsdk.CameraReleaseImageBuffer(hCamera, pRaw)
+
+# Cleanup
+mvsdk.CameraUnInit(hCamera)
+mvsdk.CameraAlignFree(pBuffer)
+```
+
+---
+
+### 23.11 OpenCV Integration Patterns
+
+**BGR Format for OpenCV** (cv2.Mat compatible):
+```python
+# 1. Set BGR8 format (OpenCV native)
+mvsdk.CameraSetIspOutFormat(hCamera, mvsdk.CAMERA_MEDIA_TYPE_BGR8)
+
+# 2. After CameraImageProcess:
+frame = np.frombuffer(frame_data, dtype=np.uint8)
+frame = frame.reshape((FrameHead.iHeight, FrameHead.iWidth, 3))
+
+# 3. Use directly with OpenCV
+cv2.imshow("Camera", frame)
+cv2.imwrite("output.jpg", frame)  # BGR → JPG directly
+gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+edges = cv2.Canny(frame, 100, 200)
+```
+
+**Display with Real-Time FPS**:
+```python
+import time
+
+fps_start = time.time()
+frame_count = 0
+
+while True:
+    frame = cam.grab()
+    if frame is not None:
+        frame_count += 1
+        
+        # Calculate FPS every 30 frames
+        if frame_count % 30 == 0:
+            elapsed = time.time() - fps_start
+            fps = frame_count / elapsed
+            print(f"FPS: {fps:.1f}")
+        
+        cv2.imshow("Camera", frame)
+    
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+```
+
+---
+
+### 23.12 Advanced Python Features
+
+#### Get Frame Statistics
+```python
+stats = mvsdk.CameraGetFrameStatistic(hCamera)
+print(f"Total: {stats.iTotal}, Captured: {stats.iCapture}, Lost: {stats.iLost}")
+```
+
+#### Reconnection Handling
+```python
+try:
+    pRaw, FrameHead = mvsdk.CameraGetImageBuffer(hCamera, 1000)
+except mvsdk.CameraException as e:
+    if e.error_code == mvsdk.CAMERA_STATUS_DEVICE_LOST:
+        print("Camera lost, attempting reconnect...")
+        mvsdk.CameraReConnect(hCamera)
+```
+
+#### Adjust ISP Parameters
+```python
+# Gamma (brightness curve): 0-1000, default=50 (0.5)
+mvsdk.CameraSetGamma(hCamera, 100)
+
+# Contrast: 0-200, default=100
+mvsdk.CameraSetContrast(hCamera, 150)
+
+# Saturation: 0-200, default=100, 0=grayscale
+mvsdk.CameraSetSaturation(hCamera, 120)
+
+# Sharpness: 0-100, 0=off
+mvsdk.CameraSetSharpness(hCamera, 30)
+
+# RGB gains: 0-400, default=100 (1.0x)
+mvsdk.CameraSetGain(hCamera, 100, 100, 100)  # R, G, B
+```
+
+#### Save to Different Formats
+```python
+# Save as BMP (lossless)
+mvsdk.CameraSaveImage(hCamera, "frame.bmp", pBuffer, FrameHead, mvsdk.FILE_BMP, 0)
+
+# Save as JPG (compressed)
+mvsdk.CameraSaveImage(hCamera, "frame.jpg", pBuffer, FrameHead, mvsdk.FILE_JPG, 95)
+
+# Save as PNG (lossless compressed)
+mvsdk.CameraSaveImage(hCamera, "frame.png", pBuffer, FrameHead, mvsdk.FILE_PNG, 0)
+
+# Save as RAW (camera native format - use pRawData, not pBuffer!)
+# Note: Must save BEFORE CameraImageProcess
+mvsdk.CameraSaveImage(hCamera, "frame.raw", pRawData, FrameHead, mvsdk.FILE_RAW, 0)
+```
+
+---
+
+### 23.13 Python Error Code Constants
+
+**From `spec/python_demo/mvsdk.py`**:
+
+```python
+# Success
+CAMERA_STATUS_SUCCESS = 0
+
+# Common errors
+CAMERA_STATUS_FAILED = -1
+CAMERA_STATUS_TIME_OUT = -12
+CAMERA_STATUS_IO_ERROR = -13
+CAMERA_STATUS_NO_DEVICE_FOUND = -16
+CAMERA_STATUS_DEVICE_IS_OPENED = -18
+CAMERA_STATUS_DEVICE_LOST = -38
+CAMERA_STATUS_ACCESS_DENY = -45
+
+# Usage
+try:
+    pRaw, FrameHead = mvsdk.CameraGetImageBuffer(hCamera, 1000)
+except mvsdk.CameraException as e:
+    if e.error_code == mvsdk.CAMERA_STATUS_TIME_OUT:
+        pass  # Normal, continue
+    elif e.error_code == mvsdk.CAMERA_STATUS_DEVICE_LOST:
+        # Try reconnect
+        mvsdk.CameraReConnect(hCamera)
+    else:
+        # Fatal error
+        print(f"Error {e.error_code}: {e.message}")
+        raise
+```
+
+---
+
+### 23.14 Python Implementation Checklist
+
+✅ **MUST DO**:
+1. Load SDK based on platform (Windows/Mac/Linux)
+2. Call `CameraSdkInit(1)` before any other function
+3. Use `CameraAlignMalloc(size, 16)` for frame buffers
+4. Set output format with `CameraSetIspOutFormat()` after init
+5. Call `CameraPlay()` before capture
+6. Always pair `CameraGetImageBuffer()` with `CameraReleaseImageBuffer()`
+7. Always call `CameraUnInit()` before exit
+8. Always call `CameraAlignFree()` for allocated buffers
+
+⚠️ **PLATFORM-SPECIFIC**:
+- Windows: Call `CameraFlipFrameBuffer(pBuffer, FrameHead, 1)` after process
+- Mac/Linux: No flip needed
+
+✅ **PERFORMANCE**:
+- Use `np.frombuffer()` for zero-copy conversion
+- Allocate buffers once, reuse in loop
+- Use 16-byte alignment for SIMD
+- Handle timeout exceptions gracefully (don't raise)
+
+✅ **ERROR HANDLING**:
+- Wrap SDK calls in try-except
+- Check for `CAMERA_STATUS_TIME_OUT` (expected, continue)
+- Use `CameraGetErrorString()` for debugging
+- Cleanup in `finally` blocks
+
+---
+
+See `spec/python_demo/mvsdk.py` (2498 lines) for complete Python wrapper with all 140+ SDK functions.
+
+---
+
+## 24. ADDITIONAL RESOURCES
+
+- **Full API Reference**: Section 4 of manual (pages 65-165)
+- **C++ Demos**: `Demo/VC++/Basic`, `Demo/VC++/Advanced`
+- **Multi-Camera Demo**: `Demo/VC++/MultiCamera`
+- **Python Demo**: `spec/python_demo/cv_grab.py`, `cv_grab_callback.py`
+- **Halcon Integration**: Section 7 of manual (pages 195-207)
+- **LabView Integration**: Section 8 of manual (pages 208-212)
+- **Error Code Reference**: Section 3.3 of manual (pages 59-64)
+
+---
+
+## 25. SDK FILE STRUCTURE
+
+```
+SDK/
+├── MVCAMSDK.DLL (Windows 32-bit)
+├── MVCAMSDK.lib
+├── X64/
+│   ├── MVCAMSDK_X64.DLL (Windows 64-bit)
+│   └── MVCAMSDK_X64.lib
+├── include/
+│   ├── CameraApi.h       // Main API header
+│   ├── CameraDefine.h    // Constants, structures
+│   └── CameraStatus.h    // Error codes
+└── lib/
+    └── libmvsdk.dylib    // Mac library
+
+Drivers/
+├── USB/                  // USB camera drivers
+└── Gige/                 // GigE camera drivers
+    └── MvDriverInstall.exe
+
+Camera/Configs/
+└── [ModelName]-[Group].Config  // Saved parameters
+```
+
+---
+
+## 26. SUMMARY FOR AI AGENTS
+
+**Core Concepts**:
+- Industrial camera SDK with C API, cross-platform
+- Supports USB2.0, USB3.0, GigE Vision cameras
+- RAW (Bayer/YUV) → Processed (RGB/Gray) pipeline
+- Handle-based API: Get handle via `CameraInit()`, pass to all functions
+- Zero-copy design: `CameraGetImageBuffer()` returns SDK buffer, must release
+
+**Critical Path**:
+1. Init SDK → Enumerate → Init camera → Start capture
+2. Loop: Get buffer → Process → Use/Save → Release buffer
+3. Cleanup: Uninit camera
+
+**Configuration**:
+- Exposure: Manual (time + gain) or Auto (target + window)
+- Resolution: Preset or custom ROI
+- Triggers: Continuous, Software, Hardware (external)
+- ISP: Gamma, contrast, saturation, sharpness, WB, gain
+- Multi-camera: Use custom names or serial numbers for identification
+
+**Integration**:
+- OpenCV: Use BGR8 format
+- Halcon: Native integration via 'MindVision' interface
+- Python: Use ctypes/CFFI to wrap DLL/dylib
+- LabView: Use NI-IMAQdx or direct DLL call
+
+**Performance**:
+- ROI reduces bandwidth, increases FPS
+- BIN/SKIP trades resolution for speed
+- Aligned memory (`CameraAlignMalloc`) for SIMD optimization
+- Hardware ISP offloads CPU
+
+**Error Handling**:
+- Check return codes (0 = success)
+- Use `CameraGetErrorString()` for messages
+- Common issues: Admin rights, timeout, already-open device
+
+This spec provides enough detail for an AI agent to integrate the MindVision camera SDK into a Python/C/C++ application.
+
+---
+
+## 27. PYTHON QUICK START (AI AGENT GUIDE)
+
+### For AI Coding Agents: How to Use This SDK in Python
+
+**Step 1**: Copy structure definitions from Section 23.2  
+**Step 2**: Use Pattern 1 (Section 23.4) for continuous streaming  
+**Step 3**: Use Pattern 2 (Section 23.5) for callback-based (if threading needed)  
+**Step 4**: Use Pattern 3 (Section 23.6) for single-shot capture  
+**Step 5**: Use Pattern 4 (Section 23.7) for multi-camera applications
+
+### Critical Python-Specific Notes
+
+**🔴 CRITICAL** - Must Do:
+```python
+# 1. Platform-specific SDK loading
+_sdk = windll.MVCAMSDK_X64  # Windows 64-bit
+_sdk = cdll.LoadLibrary("libmvsdk.dylib")  # macOS
+
+# 2. Always init SDK first
+_sdk.CameraSdkInit(1)
+
+# 3. Always set output format after CameraInit
+mvsdk.CameraSetIspOutFormat(hCamera, mvsdk.CAMERA_MEDIA_TYPE_BGR8)
+
+# 4. Aligned buffer allocation
+pBuffer = mvsdk.CameraAlignMalloc(size, 16)  # 16-byte alignment
+
+# 5. Zero-copy NumPy conversion
+frame_data = (mvsdk.c_ubyte * FrameHead.uBytes).from_address(pBuffer)
+frame = np.frombuffer(frame_data, dtype=np.uint8)
+
+# 6. Windows: MUST flip vertically
+if platform.system() == "Windows":
+    mvsdk.CameraFlipFrameBuffer(pFrameBuffer, FrameHead, 1)
+
+# 7. Always release buffer
+mvsdk.CameraReleaseImageBuffer(hCamera, pRawData)
+
+# 8. Always cleanup
+mvsdk.CameraUnInit(hCamera)
+mvsdk.CameraAlignFree(pBuffer)
+```
+
+### Typical AI Agent Workflow
+
+**When user asks to**: "Display camera feed with OpenCV"
+```python
+# Use Pattern 1 from Section 23.4
+# 1. Copy continuous_capture_opencv() function
+# 2. Adjust window title/display size if needed
+# 3. Add any requested image processing
+# 4. Ensure cleanup in finally block
+```
+
+**When user asks to**: "Capture and save image"
+```python
+# Use Pattern 3 from Section 23.6
+# 1. Copy capture_and_save_image() function
+# 2. Change filename and format as requested
+# 3. Add error handling for file I/O
+```
+
+**When user asks to**: "Support multiple cameras"
+```python
+# Use Pattern 4 from Section 23.7
+# 1. Copy Camera class wrapper
+# 2. Create camera list with open()
+# 3. Loop through cameras in capture
+# 4. Cleanup all cameras in reverse order
+```
+
+**When user asks to**: "Process frames in background thread"
+```python
+# Use Pattern 2 from Section 23.5 (Callback)
+# 1. Copy CameraApp class
+# 2. Modify GrabCallback to queue frames
+# 3. Process frames in separate thread
+# 4. Use thread-safe queue (queue.Queue)
+```
+
+### Common AI Agent Mistakes to Avoid
+
+❌ **DON'T**:
+```python
+# 1. Don't forget to release buffers
+pRaw, FrameHead = mvsdk.CameraGetImageBuffer(hCamera, 1000)
+# ... process ...
+# MISSING: mvsdk.CameraReleaseImageBuffer(hCamera, pRaw)  ← MEMORY LEAK!
+
+# 2. Don't copy NumPy arrays unnecessarily
+frame = np.array(list(frame_data))  # SLOW! Creates copy
+
+# 3. Don't use processed buffer for RAW save
+mvsdk.CameraSaveImage(hCamera, "out.raw", pFrameBuffer, ...)  # WRONG!
+# Should use: pRawData (before CameraImageProcess)
+
+# 4. Don't call CameraReleaseImageBuffer in callback
+@mvsdk.method(mvsdk.CAMERA_SNAP_PROC)
+def GrabCallback(self, hCamera, pRawData, ...):
+    mvsdk.CameraReleaseImageBuffer(hCamera, pRawData)  # WRONG! SDK handles it
+```
+
+✅ **DO**:
+```python
+# 1. Always release in try-finally
+try:
+    pRaw, FrameHead = mvsdk.CameraGetImageBuffer(hCamera, 1000)
+    # ... process ...
+finally:
+    mvsdk.CameraReleaseImageBuffer(hCamera, pRaw)
+
+# 2. Use np.frombuffer for zero-copy
+frame = np.frombuffer(frame_data, dtype=np.uint8)
+
+# 3. Save RAW before processing
+pRaw, FrameHead = mvsdk.CameraGetImageBuffer(hCamera, 1000)
+mvsdk.CameraSaveImage(hCamera, "out.raw", pRaw, FrameHead, mvsdk.FILE_RAW, 0)
+# Then process...
+
+# 4. In callbacks, SDK handles buffer release
+@mvsdk.method(mvsdk.CAMERA_SNAP_PROC)
+def GrabCallback(self, hCamera, pRawData, ...):
+    mvsdk.CameraImageProcess(hCamera, pRawData, self.pFrameBuffer, FrameHead)
+    # No release needed - SDK does it automatically
+```
+
+### Testing Python Implementation
+
+```python
+# Quick smoke test
+import mvsdk
+
+# Test SDK loaded
+print(mvsdk._sdk)  # Should show <CDLL object>
+
+# Test enumeration
+cameras = mvsdk.CameraEnumerateDevice()
+print(f"Found {len(cameras)} camera(s)")
+for i, cam in enumerate(cameras):
+    print(f"{i}: {cam.GetFriendlyName()} [{cam.GetPortType()}]")
+```
+
+### Reference Implementation
+
+**Production-quality example**: See actual codebase at:
+- `src/camera/device.py` - Complete CameraDevice class with context manager
+- `src/camera/capture.py` - Frame generator with error handling
+- `src/lib/mvsdk.py` - Enhanced SDK wrapper with Mac M1 support
+
+**Demo examples**: See `spec/python_demo/`:
+- `cv_grab.py` - Basic OpenCV integration (96 lines)
+- `cv_grab_callback.py` - Callback pattern (111 lines)
+- `cv_grab2.py` - Multi-camera class-based (128 lines)
+- `grab.py` - Minimal capture & save (111 lines)
+
+---
+

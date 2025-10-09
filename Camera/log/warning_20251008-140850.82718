@@ -1,0 +1,4 @@
+Log file created at: 2025/10/08 14:08:50
+Running on machine: 30-0885
+Log line format: [IWEF]mmdd hh:mm:ss.uuuuuu threadid file:line] msg
+W1008 14:08:50.816382 1839083520 CameraGigeBase.cpp:3479] Device:(name:HT-XGC51GC-T-C sn:055010923001 cam:169.254.170.200-10000-1300 nic:en8-169.254.209.181-Unknown-1500)ReConnected, TolCount:1, Flag:1

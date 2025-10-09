@@ -1,0 +1,22 @@
+[project]
+name = "high-speed-camera-testing"
+version = "0.1.0"
+description = "Camera feed display using Gradio and MVSDK"
+requires-python = ">=3.12"
+dependencies = [
+    "gradio>=4.0",
+    "numpy>=1.24",
+    "opencv-python>=4.8",
+    "ultralytics>=8.0",
+    "supervision>=0.21",
+    "deepface>=0.0.93",
+    "tf-keras>=2.16.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-mock>=3.12",
+    "pytest-cov>=4.1",
+    "ruff>=0.1",
+]

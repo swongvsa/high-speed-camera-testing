@@ -1,0 +1,4 @@
+Log file created at: 2025/10/06 12:33:02
+Running on machine: 30-0885
+Log line format: [IWEF]mmdd hh:mm:ss.uuuuuu threadid file:line] msg
+E1006 12:33:02.441465 210886400 MVCAMAPI.cpp:352] CameraInit Failed, err:-37,Version:2.1.0.6,FriendlyName:HT-XGC51GC-T-C,SN:055010923001

@@ -1,0 +1,9 @@
+Log file created at: 2025/10/09 10:24:48
+Running on machine: 30-0885
+Log line format: [IWEF]mmdd hh:mm:ss.uuuuuu threadid file:line] msg
+W1009 10:24:48.090101 2050453504 CameraGigeBase.cpp:3479] Device:(name:HT-XGC51GC-T-C sn:055010923001 cam:169.254.170.200-10000-1300 nic:en8-169.254.61.216-Unknown-1500)ReConnected, TolCount:1, Flag:1
+W1009 10:26:45.643440 2050453504 CameraGigeBase.cpp:3530] Device:(name:HT-XGC51GC-T-C sn:055010923001 cam:169.254.170.200-10000-1300 nic:en8-169.254.61.216-Unknown-1500)Heart Fail:1
+W1009 10:26:45.695690 2050453504 CameraGigeBase.cpp:3530] Device:(name:HT-XGC51GC-T-C sn:055010923001 cam:169.254.170.200-10000-1300 nic:en8-169.254.61.216-Unknown-1500)Heart Fail:2
+W1009 10:26:46.719201 2050453504 CameraGigeBase.cpp:3530] Device:(name:HT-XGC51GC-T-C sn:055010923001 cam:169.254.170.200-10000-1300 nic:en8-169.254.61.216-Unknown-1500)Heart Fail:3
+W1009 10:26:47.732909 2050453504 CameraGigeBase.cpp:3530] Device:(name:HT-XGC51GC-T-C sn:055010923001 cam:169.254.170.200-10000-1300 nic:en8-169.254.61.216-Unknown-1500)Heart Fail:4
+W1009 10:26:48.753953 2050453504 CameraGigeBase.cpp:3530] Device:(name:HT-XGC51GC-T-C sn:055010923001 cam:169.254.170.200-10000-1300 nic:en8-169.254.61.216-Unknown-1500)Heart Fail:5

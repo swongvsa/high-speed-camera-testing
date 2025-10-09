@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(.specify/scripts/bash/create-new-feature.sh:*)",
+      "WebFetch(domain:context7.com)",
+      "Bash(.specify/scripts/bash/check-prerequisites.sh:*)",
+      "Bash(.specify/scripts/bash/setup-plan.sh:*)",
+      "Bash(/Users/swong/dev/high-speed-camera-testing/.specify/scripts/bash/update-agent-context.sh:*)",
+      "Bash(python -m pytest tests/contract/test_gradio_ui_contract.py --collect-only)",
+      "Bash(python -m pytest tests/contract/test_viewer_session_contract.py -v)",
+      "Bash(python -m pytest tests/contract/test_gradio_ui_contract.py -v)",
+      "Bash(python -m pytest tests/contract/test_gradio_ui_contract.py -v --tb=no)",
+      "Bash(python -m pytest tests/contract/test_video_frame_contract.py -v)",
+      "Bash(sed:*)",
+      "Bash(python -m pytest tests/contract/test_gradio_ui_contract.py -v --tb=short)",
+      "Bash(python -m pytest tests/contract/test_video_frame_contract.py -v --tb=short)",
+      "Bash(uv sync:*)",
+      "Bash(chmod:*)",
+      "Bash(python:*)",
+      "Bash(uv run:*)",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__get-library-docs",
+      "mcp__serena__find_symbol",
+      "mcp__serena__insert_after_symbol",
+      "Bash(ruff check:*)",
+      "mcp__serena__list_dir",
+      "WebFetch(domain:github.com)",
+      "WebSearch",
+      "mcp__serena__get_symbols_overview",
+      "Bash(git checkout:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
