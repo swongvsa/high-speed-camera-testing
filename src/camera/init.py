@@ -9,8 +9,8 @@ This module wraps `CameraDevice` enumeration and initialization and returns a
 
 from __future__ import annotations
 
-import os
 import logging
+import os
 from typing import Optional, Tuple
 
 from src.camera.device import CameraDevice, CameraException

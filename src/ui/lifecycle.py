@@ -7,8 +7,7 @@ Maps to FR-005 (resource cleanup), FR-006a (single viewer).
 import logging
 from typing import Optional
 
-from src.camera.device import CameraDevice, CameraException
-from src.camera.errors import get_user_message
+from src.camera.device import CameraDevice
 from src.camera.init import initialize_camera
 from src.ui.session import ViewerSession
 

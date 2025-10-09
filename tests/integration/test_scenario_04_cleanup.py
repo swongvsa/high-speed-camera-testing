@@ -5,8 +5,7 @@ Reference: specs/001-using-gradio-as/quickstart.md Scenario 4
 Maps to FR-005 (camera resource cleanup)
 """
 
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 from src.camera.device import CameraDevice, CameraInfo
 

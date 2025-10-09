@@ -4,9 +4,10 @@ These tests define the expected behavior - implementation in src/camera/device.p
 Reference: specs/001-using-gradio-as/contracts/camera_device.py
 """
 
-import pytest
-import numpy as np
 from unittest.mock import MagicMock, patch
+
+import numpy as np
+import pytest
 
 
 class TestCameraDeviceContract:
@@ -75,7 +76,7 @@ class TestCameraDeviceContract:
 
     def test_single_access_enforcement(self, mock_mvsdk):
         """Contract: Second __enter__() raises CameraAccessDenied"""
-        from src.camera.device import CameraDevice, CameraAccessDenied
+        from src.camera.device import CameraAccessDenied, CameraDevice
 
         cameras = CameraDevice.enumerate_cameras()
 

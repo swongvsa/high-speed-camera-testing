@@ -4,9 +4,10 @@ These tests define the expected behavior - implementation in src/ui/session.py m
 Reference: specs/001-using-gradio-as/contracts/viewer_session.py
 """
 
-import pytest
 from datetime import datetime
 from threading import Thread
+
+import pytest
 
 
 class TestViewerSessionContract:
@@ -220,7 +221,7 @@ class TestStreamStateContract:
 
     def test_streaming_state_toggle(self):
         """Contract: is_streaming() matches start/stop calls"""
-        from src.ui.session import get_viewer_session, get_stream_state
+        from src.ui.session import get_stream_state, get_viewer_session
 
         session_mgr = get_viewer_session()
         stream_state = get_stream_state()
@@ -244,7 +245,7 @@ class TestStreamStateContract:
 
     def test_frame_count_increments(self):
         """Contract: increment_frame_count() returns monotonic values"""
-        from src.ui.session import get_viewer_session, get_stream_state
+        from src.ui.session import get_stream_state, get_viewer_session
 
         session_mgr = get_viewer_session()
         stream_state = get_stream_state()
@@ -268,7 +269,7 @@ class TestStreamStateContract:
 
     def test_error_count_threshold(self):
         """Contract: increment_error_count() triggers recovery at 10"""
-        from src.ui.session import get_viewer_session, get_stream_state
+        from src.ui.session import get_stream_state, get_viewer_session
 
         session_mgr = get_viewer_session()
         stream_state = get_stream_state()
@@ -292,7 +293,7 @@ class TestStreamStateContract:
 
     def test_error_count_reset(self):
         """Contract: reset_error_count() clears consecutive errors"""
-        from src.ui.session import get_viewer_session, get_stream_state
+        from src.ui.session import get_stream_state, get_viewer_session
 
         session_mgr = get_viewer_session()
         stream_state = get_stream_state()
@@ -318,7 +319,7 @@ class TestStreamStateContract:
 
     def test_thread_safety_frame_count(self):
         """Contract: Concurrent increment_frame_count() is correct"""
-        from src.ui.session import get_viewer_session, get_stream_state
+        from src.ui.session import get_stream_state, get_viewer_session
 
         session_mgr = get_viewer_session()
         stream_state = get_stream_state()

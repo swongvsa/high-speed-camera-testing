@@ -3,9 +3,10 @@ Unit tests for frame capture service.
 Tests T012 implementation.
 """
 
-import pytest
-import numpy as np
 from unittest.mock import MagicMock
+
+import numpy as np
+import pytest
 
 from src.camera.capture import create_frame_generator
 from src.camera.device import CameraDevice, CameraException

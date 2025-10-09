@@ -5,10 +5,9 @@ Maps to FR-006a, FR-005
 """
 
 import threading
-from typing import Optional
 from dataclasses import dataclass
 from datetime import datetime
-
+from typing import Optional
 
 # ------------------------------------------------------------------
 # Data Classes (from contract)

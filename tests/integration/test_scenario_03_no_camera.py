@@ -5,7 +5,6 @@ Reference: specs/001-using-gradio-as/quickstart.md Scenario 3
 Maps to FR-004 (friendly error messages)
 """
 
-import pytest
 from unittest.mock import patch
 
 from src.camera.init import initialize_camera

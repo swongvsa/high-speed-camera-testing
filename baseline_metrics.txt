@@ -1,0 +1,8 @@
+=== Baseline Performance Metrics ===
+Test run time: 14.53s
+Tests passed: 85/85
+
+Source file counts:
+Total Python files: 27
+Segmentation files: 5
+Face recognition files: 7

@@ -5,7 +5,6 @@ Reference: specs/001-using-gradio-as/quickstart.md Scenario 2
 Maps to FR-006a (single viewer enforcement)
 """
 
-import pytest
 
 from src.ui.session import ViewerSession
 

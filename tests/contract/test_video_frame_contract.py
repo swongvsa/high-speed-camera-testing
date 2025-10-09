@@ -3,9 +3,10 @@ Contract tests for VideoFrame data structure.
 Reference: specs/001-using-gradio-as/contracts/video_frame.py
 """
 
-import pytest
-import numpy as np
 import time
+
+import numpy as np
+import pytest
 
 
 class TestVideoFrameContract:

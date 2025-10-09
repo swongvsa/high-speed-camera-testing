@@ -3,11 +3,12 @@ Unit tests for camera initialization logic.
 Tests T015 implementation.
 """
 
-import pytest
 from unittest.mock import MagicMock, patch
 
+import pytest
+
+from src.camera.device import CameraDevice, CameraException, CameraInfo
 from src.camera.init import initialize_camera
-from src.camera.device import CameraInfo, CameraDevice, CameraException
 from src.lib import mvsdk
 
 

@@ -6,12 +6,13 @@ Reference: specs/001-using-gradio-as/quickstart.md Scenario 1
 Maps to FR-001, FR-002, FR-003, FR-006, FR-007, FR-009, FR-010
 """
 
-import pytest
-import numpy as np
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
-from src.camera.device import CameraDevice, CameraInfo, CameraCapability
+import numpy as np
+import pytest
+
 from src.camera.capture import create_frame_generator
+from src.camera.device import CameraDevice, CameraInfo
 
 
 def test_camera_feed_displays(mock_mvsdk):

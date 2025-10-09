@@ -772,7 +772,7 @@ class method(object):
     def __get__(self, obj, objtype):
         try:
             return self.cache[obj]
-        except KeyError as e:
+        except KeyError:
 
             def cl(*args):
                 return self.cb(obj, *args)
@@ -813,7 +813,7 @@ _tls = local()
 def GetLastError():
     try:
         return _tls.last_error
-    except AttributeError as e:
+    except AttributeError:
         _tls.last_error = 0
         return 0
 
@@ -829,7 +829,7 @@ def _string_buffer_to_str(buf):
         try:
             s = s.decode(codec)
             break
-        except UnicodeDecodeError as e:
+        except UnicodeDecodeError:
             continue
 
     if isinstance(s, str):

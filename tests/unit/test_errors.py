@@ -3,7 +3,6 @@ Unit tests for error message mapper.
 Tests T013 implementation.
 """
 
-import pytest
 
 from src.camera.errors import get_user_message
 from src.lib import mvsdk
