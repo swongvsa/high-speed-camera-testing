@@ -1,0 +1,4 @@
+Log file created at: 2025/10/11 10:54:01
+Running on machine: 30-0885
+Log line format: [IWEF]mmdd hh:mm:ss.uuuuuu threadid file:line] msg
+W1011 10:54:01.232798 1870475264 CameraGigeBase.cpp:3530] Device:(name:HT-XGC51GC-T-C sn:055010923001 cam:169.254.170.200-10000-1300 nic:en8-169.254.233.125-Unknown-1500)Heart Fail:1

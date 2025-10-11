@@ -45,14 +45,17 @@ def create_camera_app() -> gr.Blocks:
     session_manager = ViewerSession()
     lifecycle = SessionLifecycle(session_manager)
 
-    # Create video recorder for clip saving
-    recorder = VideoRecorder(max_duration_sec=5.0, output_dir="./clips")
+    # Create video recorder for clip saving (buffer up to 10 seconds)
+    recorder = VideoRecorder(max_duration_sec=10.0, output_dir="./clips")
 
     # Global settings for streaming (camera settings only)
     current_settings = {
         "auto_exposure": False,
         "exposure_time_ms": 30.0,  # Stored in ms for UI, converted to us for SDK
     }
+
+    # Global clip duration setting (user-configurable 1-10 seconds)
+    clip_duration_sec = {"value": 5.0}  # Use dict to allow modification in nested functions
 
     def _apply_exposure_settings():
         """Apply exposure settings to camera based on current settings"""
@@ -161,17 +164,19 @@ def create_camera_app() -> gr.Blocks:
                         f"Frame time: {avg_frame_time:.1f}ms"
                     )
 
-                    # Build recording buffer status
+                    # Build recording buffer status (use selected clip duration)
                     buffer_duration = recorder.get_buffer_duration()
                     buffer_frames = recorder.get_buffer_frame_count()
-                    if buffer_duration >= 5.0:
+                    target_duration = clip_duration_sec["value"]
+                    
+                    if buffer_duration >= target_duration:
                         buffer_status = (
-                            f"Buffer: {buffer_duration:.1f}s / 5.0s ✅\n"
+                            f"Buffer: {buffer_duration:.1f}s / {target_duration:.1f}s ✅\n"
                             f"{buffer_frames} frames ready to save"
                         )
                     else:
                         buffer_status = (
-                            f"Buffer: {buffer_duration:.1f}s / 5.0s\n"
+                            f"Buffer: {buffer_duration:.1f}s / {target_duration:.1f}s\n"
                             f"{buffer_frames} frames (filling...)"
                         )
 
@@ -260,6 +265,17 @@ def create_camera_app() -> gr.Blocks:
                 gr.Markdown("---")
                 gr.Markdown("### 🎬 Video Recording")
 
+                # Clip duration slider
+                clip_duration_slider = gr.Slider(
+                    label="Clip Duration",
+                    minimum=1.0,
+                    maximum=10.0,
+                    value=5.0,
+                    step=0.5,
+                    info="Duration of video clip to save (in seconds)",
+                    interactive=True,
+                )
+
                 # Recording status display
                 recording_status = gr.Textbox(
                     label="Recording Buffer Status",
@@ -283,8 +299,9 @@ def create_camera_app() -> gr.Blocks:
 
                 gr.Markdown(
                     "**📹 Recording Guide:**\n"
-                    "- Recording buffer constantly stores last 5 seconds\n"
-                    "- Click 'Save Last 5 Seconds' to create video file\n"
+                    "- Recording buffer constantly stores last 10 seconds\n"
+                    "- Adjust 'Clip Duration' slider to choose length (1-10s)\n"
+                    "- Click 'Save' button to create video file\n"
                     "- Download button appears when clip is ready\n"
                     "- Clips are saved as MP4 files"
                 )
@@ -336,15 +353,18 @@ def create_camera_app() -> gr.Blocks:
                 tuple: (download_button_update, status_message)
             """
             try:
+                # Get selected clip duration
+                requested_duration = clip_duration_sec["value"]
+                
                 # Check buffer status
                 buffer_duration = recorder.get_buffer_duration()
-                if buffer_duration < 2.0:
+                if buffer_duration < min(2.0, requested_duration):
                     gr.Warning(f"Buffer only has {buffer_duration:.1f}s of video. Wait for buffer to fill.")
                     return gr.DownloadButton(visible=False), "⚠️ Buffer too short, wait for more frames"
 
-                # Save clip
-                logger.info("Saving video clip from buffer...")
-                clip_path = recorder.save_clip(duration_sec=5.0)
+                # Save clip with user-selected duration
+                logger.info(f"Saving video clip from buffer ({requested_duration:.1f}s)...")
+                clip_path = recorder.save_clip(duration_sec=requested_duration)
 
                 if clip_path:
                     logger.info(f"Video clip saved: {clip_path}")
@@ -354,7 +374,7 @@ def create_camera_app() -> gr.Blocks:
                             value=clip_path,
                             visible=True
                         ),
-                        f"✅ Clip saved successfully! ({buffer_duration:.1f}s)"
+                        f"✅ Clip saved successfully! ({requested_duration:.1f}s)"
                     )
                 else:
                     gr.Warning("Failed to save video clip")
@@ -364,6 +384,26 @@ def create_camera_app() -> gr.Blocks:
                 logger.error(f"Error saving clip: {e}")
                 gr.Error(f"Recording error: {e}")
                 return gr.DownloadButton(visible=False), f"❌ Error: {e}"
+
+        # Clip duration change callback
+        def on_clip_duration_change(duration: float):
+            """
+            Handle clip duration slider change.
+
+            Args:
+                duration: Selected duration in seconds
+
+            Returns:
+                Updated button label
+            """
+            # Update global duration setting
+            clip_duration_sec["value"] = duration
+            
+            # Return updated button label
+            if duration == int(duration):
+                return f"📹 Save Last {int(duration)} Seconds"
+            else:
+                return f"📹 Save Last {duration:.1f} Seconds"
 
         # Set up change handlers to update state
         all_controls = [
@@ -377,6 +417,13 @@ def create_camera_app() -> gr.Blocks:
                 inputs=all_controls,
                 outputs=settings_state,
             )
+
+        # Set up clip duration slider handler
+        clip_duration_slider.change(
+            fn=on_clip_duration_change,
+            inputs=[clip_duration_slider],
+            outputs=[record_button],
+        )
 
         # Set up record button handler
         record_button.click(

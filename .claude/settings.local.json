@@ -33,7 +33,11 @@
       "Bash(git push:*)",
       "Bash(gh repo set-default:*)",
       "Bash(gh api:*)",
-      "Bash(gh repo view:*)"
+      "Bash(gh repo view:*)",
+      "mcp__serena__search_for_pattern",
+      "mcp__serena__replace_symbol_body",
+      "WebFetch(domain:www.gradio.app)",
+      "Bash(uv pip:*)"
     ],
     "deny": [],
     "ask": []
