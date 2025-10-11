@@ -15,6 +15,7 @@ import gradio as gr
 import numpy as np
 
 from src.camera.capture import create_frame_generator
+from src.camera.recorder import VideoRecorder
 from src.ui.lifecycle import SessionLifecycle
 from src.ui.session import ViewerSession
 
@@ -44,6 +45,9 @@ def create_camera_app() -> gr.Blocks:
     session_manager = ViewerSession()
     lifecycle = SessionLifecycle(session_manager)
 
+    # Create video recorder for clip saving
+    recorder = VideoRecorder(max_duration_sec=5.0, output_dir="./clips")
+
     # Global settings for streaming (camera settings only)
     current_settings = {
         "auto_exposure": False,
@@ -65,18 +69,18 @@ def create_camera_app() -> gr.Blocks:
                 import src.lib.mvsdk as mvsdk
 
                 mvsdk.CameraSetAeState(lifecycle.camera._handle, 1)  # 1 = auto
-                logger.info("📸 Auto-exposure enabled")
+                logger.debug("📸 Auto-exposure enabled")
             else:
                 # Manual exposure mode - apply exposure time (SDK spec section 5.1)
                 exposure_us = exposure_time_ms * 1000  # Convert ms to microseconds
                 lifecycle.camera.set_exposure_time(exposure_us)
-                logger.info(f"📸 Manual exposure: {exposure_time_ms}ms ({exposure_us}µs)")
+                logger.debug(f"📸 Manual exposure: {exposure_time_ms}ms ({exposure_us}µs)")
         except Exception as e:
             logger.error(f"Failed to apply exposure settings: {e}")
 
     def frame_stream(
         request: gr.Request,
-    ) -> Iterator[tuple[np.ndarray, str]]:
+    ) -> Iterator[tuple[np.ndarray, str, str]]:
         """
         Generator function for streaming raw camera frames to Gradio.
 
@@ -84,9 +88,10 @@ def create_camera_app() -> gr.Blocks:
             request: Gradio request with session_hash
 
         Yields:
-            tuple: (frame, camera_info)
+            tuple: (frame, camera_info, buffer_status)
                 - frame: np.ndarray with raw video frame
                 - camera_info: str with camera status and metrics
+                - buffer_status: str with recording buffer status
 
         Contract:
             - FR-003: Auto-start on load
@@ -95,6 +100,7 @@ def create_camera_app() -> gr.Blocks:
         """
         session_hash = request.session_hash or "unknown"
         camera_info = "Waiting for camera..."
+        buffer_status = "Buffer: 0.0s / 5.0s"
 
         logger.info("🎬 Stream function called - Raw camera feed mode")
 
@@ -126,6 +132,9 @@ def create_camera_app() -> gr.Blocks:
                 for frame in create_frame_generator(lifecycle.camera):
                     frame_count += 1
 
+                    # Add frame to recorder buffer
+                    recorder.add_frame(frame)
+
                     # Apply exposure settings if changed (check every 10 frames)
                     if frame_count % 10 == 0 or frame_count == 1:
                         _apply_exposure_settings()
@@ -152,7 +161,21 @@ def create_camera_app() -> gr.Blocks:
                         f"Frame time: {avg_frame_time:.1f}ms"
                     )
 
-                    yield frame, camera_info
+                    # Build recording buffer status
+                    buffer_duration = recorder.get_buffer_duration()
+                    buffer_frames = recorder.get_buffer_frame_count()
+                    if buffer_duration >= 5.0:
+                        buffer_status = (
+                            f"Buffer: {buffer_duration:.1f}s / 5.0s ✅\n"
+                            f"{buffer_frames} frames ready to save"
+                        )
+                    else:
+                        buffer_status = (
+                            f"Buffer: {buffer_duration:.1f}s / 5.0s\n"
+                            f"{buffer_frames} frames (filling...)"
+                        )
+
+                    yield frame, camera_info, buffer_status
 
             except Exception as e:
                 logger.error(f"Stream error: {e}")
@@ -234,11 +257,43 @@ def create_camera_app() -> gr.Blocks:
                     "- Auto: CameraSetAeState(1)"
                 )
 
+                gr.Markdown("---")
+                gr.Markdown("### 🎬 Video Recording")
+
+                # Recording status display
+                recording_status = gr.Textbox(
+                    label="Recording Buffer Status",
+                    value="Buffer: 0.0s / 5.0s",
+                    interactive=False,
+                    lines=2,
+                )
+
+                # Record button
+                record_button = gr.Button(
+                    "📹 Save Last 5 Seconds",
+                    variant="primary",
+                    size="lg",
+                )
+
+                # Download button (initially hidden)
+                download_button = gr.DownloadButton(
+                    label="⬇️ Download Clip",
+                    visible=False,
+                )
+
+                gr.Markdown(
+                    "**📹 Recording Guide:**\n"
+                    "- Recording buffer constantly stores last 5 seconds\n"
+                    "- Click 'Save Last 5 Seconds' to create video file\n"
+                    "- Download button appears when clip is ready\n"
+                    "- Clips are saved as MP4 files"
+                )
+
         # Auto-start streaming on page load (FR-003)
         # Use native streaming generator for stable video feed
         app.load(
             fn=frame_stream,
-            outputs=[image, camera_info_display],
+            outputs=[image, camera_info_display, recording_status],
         )
 
         # Use state to store current settings for streaming
@@ -264,10 +319,51 @@ def create_camera_app() -> gr.Blocks:
             # Map provided args to keys
             values = list(args)
             new_settings = dict(zip(keys, values))
-            # Update global settings
-            current_settings.update(new_settings)
-            logger.info(f"🔄 Settings updated: {current_settings}")
+            
+            # Only log if settings actually changed
+            if new_settings != current_settings:
+                current_settings.update(new_settings)
+                logger.info(f"🔄 Settings updated: {current_settings}")
+            
             return new_settings
+
+        # Recording button callback
+        def on_record_click():
+            """
+            Handle record button click - save buffered frames to video file.
+
+            Returns:
+                tuple: (download_button_update, status_message)
+            """
+            try:
+                # Check buffer status
+                buffer_duration = recorder.get_buffer_duration()
+                if buffer_duration < 2.0:
+                    gr.Warning(f"Buffer only has {buffer_duration:.1f}s of video. Wait for buffer to fill.")
+                    return gr.DownloadButton(visible=False), "⚠️ Buffer too short, wait for more frames"
+
+                # Save clip
+                logger.info("Saving video clip from buffer...")
+                clip_path = recorder.save_clip(duration_sec=5.0)
+
+                if clip_path:
+                    logger.info(f"Video clip saved: {clip_path}")
+                    return (
+                        gr.DownloadButton(
+                            label="⬇️ Download Clip",
+                            value=clip_path,
+                            visible=True
+                        ),
+                        f"✅ Clip saved successfully! ({buffer_duration:.1f}s)"
+                    )
+                else:
+                    gr.Warning("Failed to save video clip")
+                    return gr.DownloadButton(visible=False), "❌ Failed to save clip"
+
+            except Exception as e:
+                logger.error(f"Error saving clip: {e}")
+                gr.Error(f"Recording error: {e}")
+                return gr.DownloadButton(visible=False), f"❌ Error: {e}"
 
         # Set up change handlers to update state
         all_controls = [
@@ -281,6 +377,12 @@ def create_camera_app() -> gr.Blocks:
                 inputs=all_controls,
                 outputs=settings_state,
             )
+
+        # Set up record button handler
+        record_button.click(
+            fn=on_record_click,
+            outputs=[download_button, recording_status],
+        )
 
         # Cleanup on browser close (FR-005)
         app.unload(

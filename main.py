@@ -25,6 +25,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Suppress verbose third-party logs
+logging.getLogger("httpx").setLevel(logging.WARNING)
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Camera Feed Display Application")
