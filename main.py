@@ -13,8 +13,8 @@ Maps to FR-001 through FR-012 functional requirements.
 from __future__ import annotations
 
 import argparse
-import os
 import logging
+import os
 from typing import Optional
 
 from src.camera.init import initialize_camera
@@ -30,6 +30,11 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
 def main() -> None:
+    """Main entry point for the camera application.
+
+    Parses command-line arguments and either checks camera connectivity
+    or launches the Gradio UI.
+    """
     parser = argparse.ArgumentParser(description="Camera Feed Display Application")
     parser.add_argument("--port", type=int, default=7860, help="Server port (default: 7860)")
     parser.add_argument(
@@ -62,14 +67,15 @@ def main() -> None:
         else:
             logger.error("Camera check failed: %s", error)
             logger.info(
-                "Ensure the native MVSDK is installed and the camera is reachable on the same link-local network."
+                "Ensure the native MVSDK is installed and the camera is reachable "
+                "on the same link-local network."
             )
     else:
         # Launch Gradio UI (FR-001 to FR-012)
         logger.info("Creating Gradio camera application...")
         app = create_camera_app()
 
-        logger.info(f"Launching server on http://127.0.0.1:{args.port}")
+        logger.info("Launching server on http://127.0.0.1:%s", args.port)
         launch_app(app, server_port=args.port)
 
 
