@@ -3,6 +3,49 @@
 Live camera feed display using Gradio web interface and MindVision MVSDK.  
 Showcases camera's maximum FPS and native resolution for demos and presentations.
 
+## For Python Beginners
+
+If you're new to Python, this guide will help you set up the environment step by step. Python is a programming language, and this project runs as a Python application. We'll use a "virtual environment" to keep dependencies isolated.
+
+### Prerequisites
+- Install Python 3.10+ from [python.org](https://www.python.org/downloads/). (The project targets Python 3.13, but 3.10+ works.)
+- Verify installation: Open a terminal (Command Prompt on Windows, Terminal on macOS/Linux) and run `python --version`. It should show Python 3.x.
+
+### Setting Up a Virtual Environment
+A virtual environment creates an isolated space for this project's packages.
+
+1. Open a terminal in the project directory (where README.md is).
+2. Create the virtual environment:
+   ```
+   python -m venv .venv
+   ```
+3. Activate it:
+   - **macOS/Linux**: `source .venv/bin/activate`
+   - **Windows**: `.venv\Scripts\activate`
+   
+   Your terminal prompt should change to show `(.venv)`.
+
+### Installing Dependencies
+With the virtual environment activated, install the required packages using `pip` (Python's package manager):
+
+```
+pip install -e .[dev]
+```
+
+This installs the project in "editable" mode (changes to code take effect immediately) and includes development tools.
+
+**Optional: Faster Alternative (uv)**
+If you want faster installs, install [uv](https://docs.astral.sh/uv/) first (`pip install uv`), then use:
+```
+uv sync
+```
+uv is a modern, faster replacement for pip, but pip is sufficient for beginners.
+
+### Deactivating the Environment
+When done, run `deactivate` in the terminal.
+
+Now proceed to the main installation steps below.
+
 ## Features
 
 - ✅ Live camera feed at native resolution and maximum FPS
@@ -19,61 +62,98 @@ Showcases camera's maximum FPS and native resolution for demos and presentations
 ## Installation
 
 ```bash
-# 1. Install dependencies with uv (recommended)
-uv sync
-
-# OR with pip
-pip install -e .[dev]
-
-# 2. Verify SDK is present
+# Verify SDK is present (after cloning/downloading the repo)
 ls spec/macsdk*/lib/*.dylib    # macOS
 ls spec/linuxSDK/lib/*.so      # Linux
 ```
+
+**Note:** The MindVision SDK binaries are included in the `spec/` directory. No separate download needed.
 
 ## Quick Start
 
 ### Step 1: Configure Camera IP (GigE Cameras Only)
 
-**For GigE Vision cameras**, ensure your network adapter is on the same subnet as the camera:
+**Important for GigE Vision Cameras:** These cameras use link-local IP addressing (APIPA) by default, which means they auto-assign an IP in the 169.254.x.x range if no DHCP server is available. Your computer's Ethernet adapter must be on the same subnet (169.254.0.0/16) to communicate with the camera. USB cameras do not require this setup—they are plug-and-play.
 
-```bash
-# 1. Check camera's default IP (usually 169.254.x.x)
-# Default MindVision camera IP: 169.254.22.149
+#### Why This Setup?
+- GigE cameras don't use your regular home/office network (which is usually 192.168.x.x or similar).
+- They rely on direct Ethernet connection with link-local IPs to avoid configuration conflicts.
+- Default camera IP: 169.254.22.149 (confirm yours using the camera's utility software if different).
 
-# 2. Configure your Ethernet adapter:
-#    - IP Address: 169.254.22.100 (any IP in 169.254.x.x range, but not .149)
-#    - Subnet Mask: 255.255.0.0
-#    - Gateway: Leave empty
+#### Step-by-Step IP Configuration
 
-# 3. Verify connectivity
-ping 169.254.22.149
+1. **Connect the Hardware:**
+   - Plug the Ethernet cable from the camera directly to your computer's Ethernet port (or via a switch if multiple devices).
+   - Do NOT connect to a router with DHCP—use a direct connection.
 
-# 4. Test camera detection
-uv run python main.py --camera-ip 169.254.22.149 --check
-```
+2. **Find the Camera's IP (if not default):**
+   - Use the MindVision camera configuration tool (included with SDK) or run:
+     ```
+     python -c "from src.lib import mvsdk; print(mvsdk.CameraEnumerateDevice())"
+     ```
+   - Look for the IP in the output (e.g., 169.254.22.149).
 
-**macOS Network Setup:**
-1. System Settings → Network → Ethernet (or Thunderbolt Ethernet)
-2. Click "Details" → TCP/IP tab
-3. Configure IPv4: Manually
-4. Set IP Address: `169.254.22.100`
-5. Subnet Mask: `255.255.0.0`
-6. Click "OK" and "Apply"
+3. **Configure Your Computer's Ethernet Adapter:**
+   - **macOS:**
+     1. Go to System Settings → Network.
+     2. Select Ethernet (or Thunderbolt Ethernet) → Details... → TCP/IP tab.
+     3. Configure IPv4: Manually.
+     4. IP Address: 169.254.22.100 (choose any unused IP in 169.254.x.x, but avoid the camera's IP like .149).
+     5. Subnet Mask: 255.255.0.0.
+     6. Router/Gateway: Leave blank.
+     7. Click OK → Apply.
+   
+   - **Windows:**
+     1. Open Settings → Network & Internet → Ethernet → Change adapter options.
+     2. Right-click Ethernet → Properties → Internet Protocol Version 4 (TCP/IPv4) → Properties.
+     3. Select "Use the following IP address".
+     4. IP Address: 169.254.22.100.
+     5. Subnet Mask: 255.255.0.0.
+     6. Default Gateway: Leave blank.
+     7. Click OK.
+   
+   - **Linux (Ubuntu example):**
+     1. Edit `/etc/netplan/01-netcfg.yaml` (or similar).
+     2. Set: addresses: [169.254.22.100/16].
+     3. Apply: `sudo netplan apply`.
 
-**For USB cameras**, skip this step—they're auto-detected.
+4. **Verify Connectivity:**
+   ```
+   ping 169.254.22.149  # Replace with your camera's IP
+   ```
+   - You should see replies. If not, check cables, firewall, or IP conflicts.
+
+5. **Test Camera Detection:**
+   ```
+   python main.py --camera-ip 169.254.22.149 --check
+   ```
+   - Success: "Camera initialized successfully".
+   - Failure: Check IP setup or SDK installation.
+
+**For USB Cameras:** No IP configuration needed—plug in and proceed to Step 2.
+
+**Revert Network Settings:** After use, reset your Ethernet adapter to "Obtain IP automatically" to restore normal internet access.
 
 ### Step 2: Run the Gradio UI
 
+Ensure your virtual environment is activated (see "For Python Beginners" above).
+
 ```bash
-# Start the application (use uv run to ensure all dependencies are loaded)
-uv run python main.py
+# Start the application
+python main.py
 
 # For GigE cameras, specify the camera IP
-uv run python main.py --camera-ip 169.254.22.149
+python main.py --camera-ip 169.254.22.149
 
 # Custom port (optional)
-uv run python main.py --port 8080
+python main.py --port 8080
+
+# Test camera connectivity only
+python main.py --camera-ip 169.254.22.149 --check
 ```
+
+**Using uv (if installed):**
+Replace `python` with `uv run` for faster execution, e.g., `uv run python main.py`.
 
 ### Step 3: Access the Web Interface
 
@@ -97,26 +177,20 @@ That's it! You're now streaming live video from your high-speed camera. 🎥
 
 ### Start the Application
 
-**Important:** Use `uv run` to ensure all dependencies are available:
+**Important:** Activate your virtual environment first (see "For Python Beginners").
 
 ```bash
 # Default: Auto-detect camera, start on port 7860
-uv run python main.py
+python main.py
 
 # Specify camera IP (GigE cameras)
-uv run python main.py --camera-ip 169.254.22.149
+python main.py --camera-ip 169.254.22.149
 
 # Custom port
-uv run python main.py --port 8080
+python main.py --port 8080
 
 # Test camera connectivity only
-uv run python main.py --camera-ip 169.254.22.149 --check
-```
-
-**Alternative:** If using pip instead of uv, activate your virtual environment first:
-```bash
-source .venv/bin/activate  # or your venv path
-python main.py
+python main.py --camera-ip 169.254.22.149 --check
 ```
 
 ### Access the Interface
@@ -140,10 +214,10 @@ The UI includes manual and automatic exposure control:
 ### Command Reference
 
 ```bash
-uv run python main.py --help           # Show all options
-uv run python main.py                  # Start with auto-detected camera
-uv run python main.py --check          # Test camera without starting UI
-uv run python main.py --port 7861      # Use custom port
+python main.py --help           # Show all options
+python main.py                  # Start with auto-detected camera
+python main.py --check          # Test camera without starting UI
+python main.py --port 7861      # Use custom port
 ```
 
 ## Troubleshooting
