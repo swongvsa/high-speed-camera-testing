@@ -287,6 +287,27 @@ class CameraDevice:
             error_str = mvsdk.CameraGetErrorString(e.error_code)
             raise CameraException(f"Failed to set frame rate: {error_str}", e.error_code)
 
+    def set_gain(self, gain: float) -> None:
+        """
+        Set camera analog gain.
+
+        Args:
+            gain: Analog gain multiplier (typically 1.0 to 16.0+)
+
+        Raises:
+            RuntimeError: Camera not initialized
+            CameraException: SDK call failed
+        """
+        if not self._initialized or self._handle is None:
+            raise RuntimeError("Camera not initialized. Call __enter__() first.")
+
+        try:
+            mvsdk.CameraSetAnalogGainX(self._handle, gain)
+            logger.info(f"Analog gain set to {gain:.2f}x")
+        except mvsdk.CameraException as e:
+            error_str = mvsdk.CameraGetErrorString(e.error_code)
+            raise CameraException(f"Failed to set analog gain: {error_str}", e.error_code)
+
     def set_roi(self, width: int, height: int, offset_x: int = 0, offset_y: int = 0) -> None:
         """
         Set Region of Interest (ROI) to increase frame rate.

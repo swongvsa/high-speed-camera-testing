@@ -52,6 +52,7 @@ def create_camera_app() -> gr.Blocks:
     current_settings = {
         "auto_exposure": False,
         "exposure_time_ms": 15.0,
+        "analog_gain": 1.0,
         "target_fps": 60.0,
         "playback_fps": 30.0,
         "roi_preset": "Full Resolution",
@@ -61,6 +62,7 @@ def create_camera_app() -> gr.Blocks:
     last_applied_settings = {
         "auto_exposure": None,
         "exposure_time_ms": None,
+        "analog_gain": None,
         "target_fps": None,
         "roi_preset": None,
     }
@@ -74,7 +76,7 @@ def create_camera_app() -> gr.Blocks:
         "720p (Max Width)": (816, 480),
         "Half Height (Fast)": (816, 312),
         "Quarter Height (Faster)": (816, 156),
-        "1000+ FPS Mode": (816, 64),
+        "Extreme High-Speed": (816, 64),
     }
 
     def _apply_roi_settings():
@@ -102,7 +104,7 @@ def create_camera_app() -> gr.Blocks:
                 logger.warning(f"Failed to set ROI: {e}")
 
     def _apply_exposure_settings():
-        """Apply exposure settings to camera based on current settings"""
+        """Apply exposure and gain settings to camera based on current settings"""
         if lifecycle.camera is None:
             return
 
@@ -114,6 +116,7 @@ def create_camera_app() -> gr.Blocks:
         settings = current_settings.copy()
         auto_exposure = settings["auto_exposure"]
         exposure_time_ms = settings["exposure_time_ms"]
+        analog_gain = settings["analog_gain"]
         target_fps = settings["target_fps"]
 
         # Coordination: Ensure exposure time doesn't exceed 1/FPS limit (with 10% safety margin)
@@ -126,9 +129,11 @@ def create_camera_app() -> gr.Blocks:
                 )
             exposure_time_ms = max_exposure_ms
 
+        # Skip if settings haven't changed (avoid redundant SDK calls)
         if (
             last_applied_settings["auto_exposure"] == auto_exposure
             and last_applied_settings["exposure_time_ms"] == exposure_time_ms
+            and last_applied_settings["analog_gain"] == analog_gain
         ):
             return
 
@@ -145,10 +150,14 @@ def create_camera_app() -> gr.Blocks:
                 lifecycle.camera.set_exposure_time(exposure_us)
                 logger.info(f"📸 Manual exposure: {exposure_time_ms:.1f}ms ({exposure_us:.0f}µs)")
 
+            # Apply analog gain
+            lifecycle.camera.set_gain(analog_gain)
+
             last_applied_settings["auto_exposure"] = auto_exposure
             last_applied_settings["exposure_time_ms"] = exposure_time_ms
+            last_applied_settings["analog_gain"] = analog_gain
         except Exception as e:
-            logger.error(f"Failed to apply exposure settings: {e}")
+            logger.error(f"Failed to apply exposure/gain settings: {e}")
 
     def _apply_fps_settings():
         """Apply target FPS to recorder and camera if changed"""
@@ -293,7 +302,7 @@ def create_camera_app() -> gr.Blocks:
                     label="Resolution / ROI Preset",
                     choices=list(roi_options.keys()),
                     value="Full Resolution",
-                    info="Lower resolution = Higher possible FPS",
+                    info="Lower resolution = Higher possible FPS (GigE bandwidth limit ~100MB/s)",
                 )
 
                 target_fps_slider = gr.Slider(
@@ -302,18 +311,10 @@ def create_camera_app() -> gr.Blocks:
                     maximum=1600,
                     value=60,
                     step=5,
-                    info="Hardware frame rate limit. For >100 FPS, use smaller ROI presets below.",
+                    info="Hardware frame rate limit. For >100 FPS, use smaller ROI presets above.",
                 )
 
-                gr.Markdown("### 2. High-Speed Configuration")
-                roi_preset = gr.Dropdown(
-                    label="Resolution / ROI Preset",
-                    choices=list(roi_options.keys()),
-                    value="Full Resolution",
-                    info="Lower resolution = Higher possible FPS (GigE bandwidth limit ~100MB/s)",
-                )
-
-                gr.Markdown("### 3. Exposure Control")
+                gr.Markdown("### 3. Exposure & Gain")
                 auto_exposure_checkbox = gr.Checkbox(label="Auto Exposure", value=False)
                 exposure_slider = gr.Slider(
                     label="Shutter Speed (ms)",
@@ -321,6 +322,15 @@ def create_camera_app() -> gr.Blocks:
                     maximum=100.0,
                     value=15.0,
                     step=0.05,
+                    info="Lower = Faster motion freezing",
+                )
+                gain_slider = gr.Slider(
+                    label="Analog Gain",
+                    minimum=1.0,
+                    maximum=16.0,
+                    value=1.0,
+                    step=0.1,
+                    info="Increase to brighten image at short exposures",
                 )
 
                 gr.Markdown("### 4. Slow-Motion Recording")
@@ -351,13 +361,14 @@ def create_camera_app() -> gr.Blocks:
 
         settings_state = gr.State(current_settings)
 
-        def update_settings(target_fps, auto_ae, exp_ms, playback_fps, roi):
+        def update_settings(target_fps, auto_ae, exp_ms, playback_fps, roi, analog_gain):
             new_settings = {
                 "target_fps": target_fps,
                 "auto_exposure": auto_ae,
                 "exposure_time_ms": exp_ms,
                 "playback_fps": playback_fps,
                 "roi_preset": roi,
+                "analog_gain": analog_gain,
             }
             if new_settings != current_settings:
                 current_settings.update(new_settings)
@@ -371,6 +382,7 @@ def create_camera_app() -> gr.Blocks:
             exposure_slider,
             playback_fps_slider,
             roi_preset,
+            gain_slider,
         ]
         for ctrl in all_inputs:
             ctrl.change(fn=update_settings, inputs=all_inputs, outputs=settings_state)
