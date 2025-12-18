@@ -37,6 +37,7 @@ For complete examples, see:
 - spec/python_demo/cv_grab_callback.py - Callback pattern
 - spec/llm.txt section 23 - Python implementation guide
 """
+
 import platform
 from ctypes import *
 from threading import local
@@ -1516,6 +1517,19 @@ def CameraGetFrameSpeed(hCamera):
     err_code = _sdk.CameraGetFrameSpeed(hCamera, byref(piFrameSpeed))
     SetLastError(err_code)
     return piFrameSpeed.value
+
+
+def CameraSetFrameRate(hCamera, iFrameRate):
+    err_code = _sdk.CameraSetFrameRate(hCamera, iFrameRate)
+    SetLastError(err_code)
+    return err_code
+
+
+def CameraGetFrameRate(hCamera):
+    piFrameRate = c_int()
+    err_code = _sdk.CameraGetFrameRate(hCamera, byref(piFrameRate))
+    SetLastError(err_code)
+    return piFrameRate.value
 
 
 def CameraSetParameterMode(hCamera, iMode):

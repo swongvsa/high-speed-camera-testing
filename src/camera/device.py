@@ -225,13 +225,117 @@ class CameraDevice:
             raise RuntimeError("Camera not initialized. Call __enter__() first.")
 
         try:
-            # Ensure manual exposure mode
+            # Ensure manual exposure mode (0 = manual, 1 = auto)
             mvsdk.CameraSetAeState(self._handle, 0)
+
+            # Get exposure range to validate/clamp the value
+            exp_min, exp_max, exp_step = mvsdk.CameraGetExposureTimeRange(self._handle)
+
+            # Clamp to valid range
+            clamped_us = max(exp_min, min(exp_max, exposure_us))
+            if clamped_us != exposure_us:
+                logger.warning(
+                    f"Exposure {exposure_us}us clamped to [{exp_min}, {exp_max}] -> {clamped_us}us"
+                )
+
             # Set exposure time
-            mvsdk.CameraSetExposureTime(self._handle, exposure_us)
+            mvsdk.CameraSetExposureTime(self._handle, clamped_us)
+
+            # Verify the actual value set (CMOS sensors quantize to line times)
+            actual_us = mvsdk.CameraGetExposureTime(self._handle)
+            logger.info(
+                f"Exposure set: requested={exposure_us:.1f}us, actual={actual_us:.1f}us "
+                f"(range: {exp_min:.1f}-{exp_max:.1f}us)"
+            )
         except mvsdk.CameraException as e:
             error_str = mvsdk.CameraGetErrorString(e.error_code)
             raise CameraException(f"Failed to set exposure time: {error_str}", e.error_code)
+
+    def set_frame_rate(self, fps: int) -> None:
+        """
+        Set camera capture frame rate.
+
+        Args:
+            fps: Desired frame rate in FPS
+
+        Raises:
+            RuntimeError: Camera not initialized
+            CameraException: SDK call failed
+        """
+        if not self._initialized or self._handle is None:
+            raise RuntimeError("Camera not initialized. Call __enter__() first.")
+
+        try:
+            # Set frame rate
+            mvsdk.CameraSetFrameRate(self._handle, fps)
+
+            # Verify actual frame rate
+            actual_fps = mvsdk.CameraGetFrameRate(self._handle)
+            logger.info(f"Frame rate set: requested={fps}, actual={actual_fps}")
+
+            # Note: exposure time must be < 1/fps for this to be effective
+            exposure_limit_us = (1.0 / fps) * 1_000_000
+            current_exposure_us = mvsdk.CameraGetExposureTime(self._handle)
+
+            if current_exposure_us > exposure_limit_us:
+                logger.warning(
+                    f"Current exposure ({current_exposure_us:.1f}us) is too long for "
+                    f"requested FPS ({fps} -> {exposure_limit_us:.1f}us limit). "
+                    f"FPS will be limited by exposure."
+                )
+        except mvsdk.CameraException as e:
+            error_str = mvsdk.CameraGetErrorString(e.error_code)
+            raise CameraException(f"Failed to set frame rate: {error_str}", e.error_code)
+
+    def set_roi(self, width: int, height: int, offset_x: int = 0, offset_y: int = 0) -> None:
+        """
+        Set Region of Interest (ROI) to increase frame rate.
+
+        Args:
+            width: ROI width (multiple of 16)
+            height: ROI height (multiple of 4)
+            offset_x: Horizontal offset (multiple of 16)
+            offset_y: Vertical offset (multiple of 4)
+
+        Raises:
+            RuntimeError: Camera not initialized
+            CameraException: SDK call failed
+        """
+        if not self._initialized or self._handle is None or self._capability is None:
+            raise RuntimeError("Camera not initialized. Call __enter__() first.")
+
+        # Ensure values are within hardware limits
+        max_w = self._capability.sResolutionRange.iWidthMax
+        max_h = self._capability.sResolutionRange.iHeightMax
+
+        width = max(16, min(max_w, (width // 16) * 16))
+        height = max(4, min(max_h, (height // 4) * 4))
+        offset_x = max(0, min(max_w - width, (offset_x // 16) * 16))
+        offset_y = max(0, min(max_h - height, (offset_y // 4) * 4))
+
+        try:
+            # Configure resolution structure
+            res = mvsdk.tSdkImageResolution()
+            res.iIndex = 0xFF  # Custom ROI
+            res.iWidth = width
+            res.iHeight = height
+            res.iWidthFOV = width
+            res.iHeightFOV = height
+            res.iHOffsetFOV = offset_x
+            res.iVOffsetFOV = offset_y
+
+            # ISP output should match ROI
+            mvsdk.CameraSetImageResolution(self._handle, res)
+
+            logger.info(f"ROI set: {width}x{height} at ({offset_x}, {offset_y})")
+
+            # Note: We don't necessarily need to reallocate the buffer if it was
+            # already allocated at max resolution size, but we might need to
+            # signal the recorder that frame sizes have changed.
+
+        except mvsdk.CameraException as e:
+            error_str = mvsdk.CameraGetErrorString(e.error_code)
+            raise CameraException(f"Failed to set ROI: {error_str}", e.error_code)
 
     def __enter__(self) -> "CameraDevice":
         """

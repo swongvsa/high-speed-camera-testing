@@ -30,3 +30,6 @@ Thumbs.db
 
 # Video clips
 clips/
+
+# Camera logs
+Camera/log/
