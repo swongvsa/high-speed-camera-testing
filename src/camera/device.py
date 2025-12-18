@@ -46,6 +46,7 @@ class CameraInfo:
     device_index: int
     friendly_name: str
     port_type: str
+    source_type: str = "mindvision"
 
 
 @dataclass
@@ -181,10 +182,11 @@ class CameraDevice:
         if not self._initialized or self._capability is None:
             raise RuntimeError("Camera not initialized. Call __enter__() first.")
 
+        cap = self._capability
         return CameraCapability(
             is_mono=self._is_mono,
-            max_width=self._capability.sResolutionRange.iWidthMax,
-            max_height=self._capability.sResolutionRange.iHeightMax,
+            max_width=cap.sResolutionRange.iWidthMax,
+            max_height=cap.sResolutionRange.iHeightMax,
             max_fps=200.0,
         )
 
@@ -198,10 +200,11 @@ class CameraDevice:
         Raises:
             RuntimeError: Camera not initialized
         """
-        if not self._initialized or self._camera_info is None:
+        if not self._initialized or self._camera_info is None or self._capability is None:
             raise RuntimeError("Camera not initialized. Call __enter__() first.")
 
-        return f"{self._camera_info.friendly_name} ({self._capability.sResolutionRange.iWidthMax}x{self._capability.sResolutionRange.iHeightMax})"
+        cap = self._capability
+        return f"{self._camera_info.friendly_name} ({cap.sResolutionRange.iWidthMax}x{cap.sResolutionRange.iHeightMax})"
 
     def set_exposure_time(self, exposure_us: float) -> None:
         """
@@ -411,7 +414,9 @@ class CameraDevice:
                             # Reconnect failed - reset counter and continue trying
                             # This prevents infinite reconnect attempts on each frame
                             self._timeout_count = 0
-                            logger.warning("Reconnect failed, will retry after next timeout sequence")
+                            logger.warning(
+                                "Reconnect failed, will retry after next timeout sequence"
+                            )
                             continue
 
                     # Normal timeout: continue capturing
@@ -541,7 +546,7 @@ class CameraDevice:
                 try:
                     logger.warning(
                         "Camera not initialized, attempting reconnect (%.1fs since last attempt)",
-                        time_since_last_attempt
+                        time_since_last_attempt,
                     )
 
                     if self._attempt_reconnect():
@@ -549,8 +554,7 @@ class CameraDevice:
                         logger.info("Reconnect successful, camera reinitialized")
                     else:
                         logger.warning(
-                            "Reconnect failed, will retry in %.0fs",
-                            self._min_reconnect_interval
+                            "Reconnect failed, will retry in %.0fs", self._min_reconnect_interval
                         )
                 finally:
                     self._reconnect_in_progress = False
@@ -614,4 +618,3 @@ class CameraDevice:
                 return None
             error_str = mvsdk.CameraGetErrorString(e.error_code)
             raise CameraException(f"Frame capture failed: {error_str}", e.error_code)
-

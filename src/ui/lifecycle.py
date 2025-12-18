@@ -5,10 +5,11 @@ Maps to FR-005 (resource cleanup), FR-006a (single viewer).
 """
 
 import logging
-from typing import Optional
+from typing import Optional, Union
 
-from src.camera.device import CameraDevice
+from src.camera.device import CameraDevice, CameraInfo
 from src.camera.init import initialize_camera
+from src.camera.webcam import WebcamDevice
 from src.ui.session import ViewerSession
 
 logger = logging.getLogger(__name__)
@@ -32,14 +33,17 @@ class SessionLifecycle:
             session_manager: Session state tracker
         """
         self.session_manager = session_manager
-        self.camera: Optional[CameraDevice] = None
+        self.camera: Optional[Union[CameraDevice, WebcamDevice]] = None
 
-    def on_session_start(self, session_hash: str) -> Optional[str]:
+    def on_session_start(
+        self, session_hash: str, selected_camera: Optional[CameraInfo] = None
+    ) -> Optional[str]:
         """
         Handle user connecting. Returns error message if blocked.
 
         Args:
             session_hash: Gradio session identifier (UUID)
+            selected_camera: Explicitly selected camera source
 
         Returns:
             None if session started successfully
@@ -50,20 +54,39 @@ class SessionLifecycle:
             - FR-002: Initialize camera on session start
             - FR-004: Return user-friendly error messages
         """
-        # Try to claim session slot
+        # If camera is already initialized and it's a different one, cleanup first
+        if self.camera and selected_camera:
+            # Check if it's the same camera
+            # (Simplification: just restart if selected_camera is provided)
+            self._cleanup_camera()
+
+        # Try to claim session slot if not already claimed
         if not self.session_manager.try_start_session(session_hash):
-            return "Camera already in use. Only one viewer allowed."
+            # If we already have a session for this hash, it's fine
+            if not self.session_manager.is_session_active(session_hash):
+                return "Camera already in use. Only one viewer allowed."
 
         # Initialize camera
-        camera, error = initialize_camera()
+        camera, error = initialize_camera(selected_info=selected_camera)
         if error:
-            # Cleanup failed session
-            self.session_manager.end_session(session_hash)
+            # Cleanup failed session if we just tried to start it
+            if self.session_manager.is_session_active(session_hash):
+                self.session_manager.end_session(session_hash)
             return error
 
         self.camera = camera
-        logger.info(f"Session started: {session_hash}")
+        logger.info(f"Session started: {session_hash} with camera: {selected_camera}")
         return None
+
+    def _cleanup_camera(self) -> None:
+        """Internal helper to cleanup camera resources."""
+        if self.camera:
+            try:
+                self.camera.__exit__(None, None, None)
+            except Exception as e:
+                logger.error(f"Error during camera cleanup: {e}")
+            finally:
+                self.camera = None
 
     def on_session_end(self, session_hash: str) -> None:
         """
@@ -79,9 +102,7 @@ class SessionLifecycle:
         """
         try:
             # Cleanup camera if active
-            if self.camera:
-                self.camera.__exit__(None, None, None)
-                self.camera = None
+            self._cleanup_camera()
 
             # Release session
             self.session_manager.end_session(session_hash)

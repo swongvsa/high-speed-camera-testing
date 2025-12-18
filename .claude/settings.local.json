@@ -37,7 +37,9 @@
       "mcp__serena__search_for_pattern",
       "mcp__serena__replace_symbol_body",
       "WebFetch(domain:www.gradio.app)",
-      "Bash(uv pip:*)"
+      "Bash(uv pip:*)",
+      "mcp__serena__read_memory",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []

@@ -13,17 +13,18 @@ with proper error handling and timeout management.
 """
 
 import logging
-from typing import Iterator
+from typing import Iterator, Union
 
 import numpy as np
 
 from src.camera.device import CameraDevice, CameraException
+from src.camera.webcam import WebcamDevice
 from src.lib import mvsdk
 
 logger = logging.getLogger(__name__)
 
 
-def create_frame_generator(camera: CameraDevice) -> Iterator[np.ndarray]:
+def create_frame_generator(camera: Union[CameraDevice, WebcamDevice]) -> Iterator[np.ndarray]:
     """
     Generator that yields frames from camera with error handling.
 

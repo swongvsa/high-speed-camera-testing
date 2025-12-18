@@ -16,7 +16,7 @@ def test_no_camera_shows_error():
     then clear error message displays.
     """
     # Mock: No cameras found
-    with patch("src.camera.device.CameraDevice.enumerate_cameras") as mock_enum:
+    with patch("src.camera.init.enumerate_all_cameras") as mock_enum:
         mock_enum.return_value = []
 
         # Action: Initialize
@@ -31,7 +31,7 @@ def test_no_camera_shows_error():
 
 def test_error_message_is_user_friendly():
     """Error messages are clear and actionable"""
-    with patch("src.camera.device.CameraDevice.enumerate_cameras") as mock_enum:
+    with patch("src.camera.init.enumerate_all_cameras") as mock_enum:
         mock_enum.return_value = []
 
         camera, error = initialize_camera()

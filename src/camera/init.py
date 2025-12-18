@@ -3,78 +3,100 @@ Camera initialization helpers.
 Provides `initialize_camera()` which supports selecting a camera by IP address
 (or by environment variable `CAMERA_IP`) to accommodate dynamic link-local IPs.
 
-This module wraps `CameraDevice` enumeration and initialization and returns a
-(CameraDevice, None) tuple on success or (None, error_message) on failure.
+This module wraps `CameraDevice` and `WebcamDevice` enumeration and initialization.
 """
 
 from __future__ import annotations
 
 import logging
 import os
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 
-from src.camera.device import CameraDevice, CameraException
+from src.camera.device import CameraDevice, CameraException, CameraInfo
+from src.camera.webcam import WebcamDevice
 
 logger = logging.getLogger(__name__)
 
 
-def initialize_camera(
-    preferred_ip: Optional[str] = None,
-) -> Tuple[Optional[CameraDevice], Optional[str]]:
+def enumerate_all_cameras() -> list[CameraInfo]:
     """
-    Enumerate and initialize a camera, optionally preferring one that matches
-    `preferred_ip` or the `CAMERA_IP` environment variable.
-
-    Args:
-        preferred_ip: Optional IP address to prefer (e.g. "169.254.22.149").
+    Enumerate both MindVision cameras and standard webcams.
 
     Returns:
-        (CameraDevice, None) on success, or (None, error_message) on failure.
-
-    Notes:
-    - If the native MVSDK is not present this will typically fail to initialize
-      a real camera; tests may mock `src.lib.mvsdk` and `CameraDevice`.
-    - Matching by IP is best-effort: we look for the preferred_ip in the
-      `friendly_name` or `port_type` fields returned by `CameraDevice.enumerate_cameras()`.
+        Combined list of CameraInfo objects.
     """
-    # Allow env var to override
-    env_ip = os.environ.get("CAMERA_IP")
-    if preferred_ip is None and env_ip:
-        preferred_ip = env_ip
+    all_cameras = []
 
+    # 1. Try MindVision cameras
     try:
-        cameras = CameraDevice.enumerate_cameras()
-    except CameraException as e:
-        msg = f"Camera enumeration failed: {e}"
-        logger.error(msg)
-        return None, msg
+        mv_cameras = CameraDevice.enumerate_cameras()
+        all_cameras.extend(mv_cameras)
+    except Exception as e:
+        logger.warning(f"MindVision camera enumeration failed: {e}")
 
-    if not cameras:
-        return None, "No camera detected. Please connect a camera and restart."
+    # 2. Try Webcams
+    try:
+        webcams = WebcamDevice.enumerate_cameras()
+        all_cameras.extend(webcams)
+    except Exception as e:
+        logger.warning(f"Webcam enumeration failed: {e}")
 
-    selected = None
-    if preferred_ip:
-        # Try best-effort match: check friendly_name and port_type strings for the IP
-        for c in cameras:
-            try:
-                if preferred_ip in (c.friendly_name or "") or preferred_ip in (c.port_type or ""):
-                    selected = c
-                    break
-            except Exception:
-                # Defensive: skip if fields not present
-                continue
+    return all_cameras
 
-        if selected is None:
-            # No exact match; warn and fall back to first camera
-            logger.warning(
-                "Preferred camera IP %s not found among enumerated devices. Falling back to first device.",
-                preferred_ip,
-            )
-            selected = cameras[0]
+
+def initialize_camera(
+    preferred_ip: Optional[str] = None,
+    selected_info: Optional[CameraInfo] = None,
+) -> Tuple[Optional[Union[CameraDevice, WebcamDevice]], Optional[str]]:
+    """
+    Initialize a camera based on preferred IP or specific CameraInfo.
+
+    Args:
+        preferred_ip: Optional IP address to prefer for MindVision cameras.
+        selected_info: Explicitly selected CameraInfo from UI.
+
+    Returns:
+        (Device, None) on success, or (None, error_message) on failure.
+    """
+    if selected_info:
+        selected = selected_info
     else:
-        selected = cameras[0]
+        # Fallback to auto-detection logic
+        all_cameras = enumerate_all_cameras()
+        if not all_cameras:
+            return None, "No camera detected. Please connect a camera and restart."
 
-    camera = CameraDevice(selected)
+        # Allow env var to override preferred IP
+        env_ip = os.environ.get("CAMERA_IP")
+        if preferred_ip is None and env_ip:
+            preferred_ip = env_ip
+
+        selected = None
+        if preferred_ip:
+            # Try best-effort match for MindVision cameras
+            for c in all_cameras:
+                if c.source_type == "mindvision":
+                    if preferred_ip in (c.friendly_name or "") or preferred_ip in (
+                        c.port_type or ""
+                    ):
+                        selected = c
+                        break
+
+            if selected is None:
+                logger.warning(
+                    "Preferred camera IP %s not found. Falling back to first device.",
+                    preferred_ip,
+                )
+                selected = all_cameras[0]
+        else:
+            selected = all_cameras[0]
+
+    # Create appropriate device instance
+    if selected.source_type == "webcam":
+        camera = WebcamDevice(selected)
+    else:
+        camera = CameraDevice(selected)
+
     try:
         camera.__enter__()
         cap = camera.get_capability()

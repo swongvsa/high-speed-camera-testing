@@ -1,6 +1,12 @@
 line-length = 100
 target-version = "py312"
 
+# Exclude vendor SDK bindings from linting (external code with different conventions)
+exclude = [
+    "src/lib/mvsdk.py",
+    "spec/",
+]
+
 [lint]
 select = ["E", "F", "I", "N", "W"]
 ignore = ["E501"]  # Line too long (handled by formatter)

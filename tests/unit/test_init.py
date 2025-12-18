@@ -17,9 +17,14 @@ def test_initialize_camera_success(mock_mvsdk):
     from src.camera.device import CameraCapability
 
     # Setup: Mock camera available
-    with patch("src.camera.device.CameraDevice.enumerate_cameras") as mock_enum:
+    with patch("src.camera.init.enumerate_all_cameras") as mock_enum:
         mock_enum.return_value = [
-            CameraInfo(device_index=0, friendly_name="Test Camera", port_type="USB")
+            CameraInfo(
+                device_index=0,
+                friendly_name="Test Camera",
+                port_type="USB",
+                source_type="mindvision",
+            )
         ]
 
         with (
@@ -45,7 +50,7 @@ def test_initialize_camera_success(mock_mvsdk):
 def test_initialize_camera_no_cameras():
     """No cameras available"""
     # Setup: No cameras found
-    with patch("src.camera.device.CameraDevice.enumerate_cameras") as mock_enum:
+    with patch("src.camera.init.enumerate_all_cameras") as mock_enum:
         mock_enum.return_value = []
 
         # Action: Initialize
@@ -60,9 +65,14 @@ def test_initialize_camera_no_cameras():
 def test_initialize_camera_init_failure(mock_mvsdk):
     """Camera initialization fails"""
     # Setup: Camera found but init fails
-    with patch("src.camera.device.CameraDevice.enumerate_cameras") as mock_enum:
+    with patch("src.camera.init.enumerate_all_cameras") as mock_enum:
         mock_enum.return_value = [
-            CameraInfo(device_index=0, friendly_name="Test Camera", port_type="USB")
+            CameraInfo(
+                device_index=0,
+                friendly_name="Test Camera",
+                port_type="USB",
+                source_type="mindvision",
+            )
         ]
 
         with patch("src.camera.device.CameraDevice.__enter__") as mock_enter:
@@ -82,9 +92,14 @@ def test_initialize_camera_access_denied():
     from src.camera.device import CameraAccessDenied
 
     # Setup: Camera in use
-    with patch("src.camera.device.CameraDevice.enumerate_cameras") as mock_enum:
+    with patch("src.camera.init.enumerate_all_cameras") as mock_enum:
         mock_enum.return_value = [
-            CameraInfo(device_index=0, friendly_name="Test Camera", port_type="USB")
+            CameraInfo(
+                device_index=0,
+                friendly_name="Test Camera",
+                port_type="USB",
+                source_type="mindvision",
+            )
         ]
 
         with patch("src.camera.device.CameraDevice.__enter__") as mock_enter:
@@ -108,9 +123,14 @@ def test_initialize_camera_logs_info(mock_mvsdk, caplog):
     caplog.set_level(logging.INFO)
 
     # Setup: Mock camera
-    with patch("src.camera.device.CameraDevice.enumerate_cameras") as mock_enum:
+    with patch("src.camera.init.enumerate_all_cameras") as mock_enum:
         mock_enum.return_value = [
-            CameraInfo(device_index=0, friendly_name="Test Camera USB", port_type="USB")
+            CameraInfo(
+                device_index=0,
+                friendly_name="Test Camera USB",
+                port_type="USB",
+                source_type="mindvision",
+            )
         ]
 
         with patch("src.camera.device.CameraDevice.__enter__") as mock_enter:

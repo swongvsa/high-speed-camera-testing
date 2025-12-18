@@ -56,7 +56,7 @@ def test_camera_enumeration(mvsdk):
                 if error_code is not None:
                     error_str = mvsdk.CameraGetErrorString(error_code)
                     logger.error(f"   Error code {error_code}: {error_str}")
-            except:
+            except Exception:
                 pass
         return []
 
@@ -64,8 +64,9 @@ def test_camera_enumeration(mvsdk):
 def test_camera_init():
     """Test full camera initialization."""
     try:
-        from src.camera.init import initialize_camera
         import os
+
+        from src.camera.init import initialize_camera
 
         # Use environment variable if set
         camera_ip = os.environ.get('CAMERA_IP', '169.254.170.200')

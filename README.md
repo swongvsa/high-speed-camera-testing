@@ -8,43 +8,71 @@ Showcases camera's maximum FPS and native resolution for demos and presentations
 If you're new to Python, this guide will help you set up the environment step by step. Python is a programming language, and this project runs as a Python application. We'll use a "virtual environment" to keep dependencies isolated.
 
 ### Prerequisites
-- Install Python 3.10+ from [python.org](https://www.python.org/downloads/). (The project targets Python 3.13, but 3.10+ works.)
-- Verify installation: Open a terminal (Command Prompt on Windows, Terminal on macOS/Linux) and run `python --version`. It should show Python 3.x.
+- Python 3.12+ (The project targets Python 3.13, but 3.12+ is supported).
+- **Recommended**: [uv](https://docs.astral.sh/uv/) - a fast Python package and version manager.
 
-### Setting Up a Virtual Environment
-A virtual environment creates an isolated space for this project's packages.
+### Setting Up the Environment (Recommended: uv)
 
-1. Open a terminal in the project directory (where README.md is).
-2. Create the virtual environment:
+We recommend using `uv` for the fastest and most reliable setup. It can automatically manage Python versions and virtual environments for you.
+
+1. **Install uv**:
+   ```bash
+   # macOS/Linux
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   # Windows
+   powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
    ```
+
+2. **Install Python via uv**:
+   ```bash
+   uv python install 3.13
+   ```
+
+3. **Sync Project**:
+   ```bash
+   uv sync
+   ```
+   This automatically creates a virtual environment and installs all dependencies exactly as specified in `uv.lock`.
+
+4. **Run the App**:
+   ```bash
+   uv run python main.py
+   ```
+
+---
+
+### Alternative: Manual Setup (pip)
+
+If you prefer using standard Python tools:
+
+1. **Install Python**: Download and install Python 3.12+ from [python.org](https://www.python.org/downloads/).
+
+2. **Create the virtual environment**:
+   ```bash
    python -m venv .venv
    ```
-3. Activate it:
+
+3. **Activate it**:
    - **macOS/Linux**: `source .venv/bin/activate`
    - **Windows**: `.venv\Scripts\activate`
-   
-   Your terminal prompt should change to show `(.venv)`.
 
-### Installing Dependencies
-With the virtual environment activated, install the required packages using `pip` (Python's package manager):
-
-```
-pip install -e .[dev]
-```
-
-This installs the project in "editable" mode (changes to code take effect immediately) and includes development tools.
-
-**Optional: Faster Alternative (uv)**
-If you want faster installs, install [uv](https://docs.astral.sh/uv/) first (`pip install uv`), then use:
-```
-uv sync
-```
-uv is a modern, faster replacement for pip, but pip is sufficient for beginners.
+4. **Install Dependencies**:
+   ```bash
+   pip install -e .[dev]
+   ```
 
 ### Deactivating the Environment
-When done, run `deactivate` in the terminal.
+When done, run `deactivate` in the terminal (if using the manual setup).
 
 Now proceed to the main installation steps below.
+
+## 🚀 Getting Started Checklist
+
+1. [ ] **Connect Hardware**: Plug in your USB or GigE camera.
+2. [ ] **Setup Environment**: Run `uv sync` (recommended) or follow the [Manual Setup](#alternative-manual-setup-pip).
+3. [ ] **Configure IP** (GigE only): Ensure your network adapter is on the same subnet (e.g., `169.254.22.100`).
+4. [ ] **Test Connection**: Run `python main.py --check` to verify the SDK detects your camera.
+5. [ ] **Launch UI**: Run `python main.py` and open `http://127.0.0.1:7860`.
 
 ## Features
 
@@ -63,11 +91,10 @@ Now proceed to the main installation steps below.
 
 ```bash
 # Verify SDK is present (after cloning/downloading the repo)
-ls spec/macsdk*/lib/*.dylib    # macOS
-ls spec/linuxSDK/lib/*.so      # Linux
+ls spec/Mac_sdk_m1*/lib/*.dylib    # macOS (M1/M2/M3)
 ```
 
-**Note:** The MindVision SDK binaries are included in the `spec/` directory. No separate download needed.
+**Note:** The MindVision SDK binaries for macOS are included in the `spec/` directory. For Linux or Intel-based Macs, please consult the `spec/manual.txt` or contact support for the appropriate binaries if they are not pre-installed.
 
 ## Quick Start
 
@@ -255,22 +282,10 @@ lsof | grep -i camera
 
 ### Low Frame Rate
 
-- Check CPU usage (Task Manager / Activity Monitor)
-- Reduce camera resolution in camera settings
-- Close other applications
-- For GigE: Verify network adapter MTU settings (may need jumbo frames)
-
-### Improved Frame Rate
-
-After removing processing pipelines, you should see:
-- **25-30 FPS** (vs. 10-15 FPS with processing)
-- **Lower CPU usage** (60-70% reduction)
-- **Faster startup** (2-3 seconds vs. 5-10 seconds)
-
-If frame rate is still low:
-- Check CPU usage (Activity Monitor)
-- Close other applications
-- For GigE cameras: Verify network adapter MTU settings
+- **Check CPU usage**: Ensure no other heavy processes are running.
+- **MTU Settings**: For GigE cameras, verify if your network adapter supports Jumbo Frames (MTU 9000).
+- **Network Congestion**: Use a direct Ethernet connection; avoid busy office networks.
+- **Lighting**: In manual exposure mode, very long exposure times (e.g., >40ms) will naturally limit the maximum possible FPS.
 
 ### Port Already in Use
 
@@ -327,22 +342,18 @@ ruff check src tests
 ruff format src tests
 ```
 
-### Documentation
+## Documentation
 
-**Application Documentation**:
-- **Implementation Plan**: `specs/001-using-gradio-as/plan.md`
-- **Data Model**: `specs/001-using-gradio-as/data-model.md`
-- **API Contracts**: `specs/001-using-gradio-as/contracts/`
-- **Quickstart Guide**: `specs/001-using-gradio-as/quickstart.md`
-- **Task Breakdown**: `specs/001-using-gradio-as/tasks.md`
-- **Troubleshooting**: `TROUBLESHOOTING.md`
+### Application Docs
+- [Troubleshooting Guide](TROUBLESHOOTING.md) - Common issues and network setup
+- [SDK Implementation Reference](SDK_REFERENCE.md) - Deep dive into how we use the MindVision SDK
+- [Exposure Controls](EXPOSURE_CONTROLS.md) - Details on manual vs auto exposure
+- [Implementation Plan](specs/001-using-gradio-as/plan.md) - Original design specifications
 
-**SDK Documentation**:
-- **📖 SDK Implementation Reference**: `SDK_REFERENCE.md` - How we implement the MindVision SDK
-- **Official Spec**: `spec/llm.txt` - MindVision SDK Specification v2.4 (English, AI-optimized)
-- **Official Manual**: `spec/manual.txt` - Full SDK manual (Chinese)
-- **Python Examples**: `spec/python_demo/` - Reference implementations
-- **SDK Binaries**: `spec/Mac_sdk_m1(250120)/` (macOS M1+), `spec/macsdk(240831)/` (macOS Intel)
+### SDK Resources (under `spec/`)
+- `llm.txt` - AI-optimized SDK Specification v2.4 (English)
+- `manual.txt` - Full SDK technical manual (Chinese)
+- `python_demo/` - Reference Python implementations from the vendor
 
 ## Security
 
@@ -350,16 +361,23 @@ ruff format src tests
 - **No public sharing**: Gradio sharing is disabled
 - **Single viewer**: Camera access restricted to one user
 
-## Performance
+## Performance & Optimization
 
-Implementation follows MindVision SDK best practices (see `SDK_REFERENCE.md`):
+This implementation follows MindVision SDK best practices (see `SDK_REFERENCE.md`) to deliver maximum performance:
 
-- **Frame rate**: Maximum FPS via `CameraSetFrameSpeed(2)` high-speed mode
-- **Latency**: <100ms target frame delay
-- **Resolution**: Native camera resolution (no downsampling)
-- **Zero-copy**: 16-byte aligned buffers with `np.frombuffer()` for SIMD optimization
-- **CPU efficiency**: Manual exposure, minimal ISP processing
-- **Memory**: Aligned allocation with proper cleanup
+- **Zero-copy Capture**: Uses aligned memory buffers with `ctypes` and `np.frombuffer()` to create NumPy views directly on SDK memory, avoiding expensive data copying.
+- **High-speed Mode**: Automatically enables `CameraSetFrameSpeed(2)` to prioritize frame rate over ISP processing.
+- **Minimal Latency**: <100ms end-to-end latency by bypassing unnecessary image processing pipelines.
+- **Native Resolution**: Streams at the camera's full native resolution for maximum detail.
+- **Efficient UI**: Gradio interface optimized for streaming high-FPS video feeds with minimal overhead.
+
+### Recent Improvements
+
+We recently refactored the capture pipeline to achieve:
+- **Higher Frame Rates**: Up to **25-30 FPS** (previously 10-15 FPS).
+- **Lower CPU Usage**: ~60% reduction in processing overhead.
+- **Faster Startup**: App initializes in 2-3 seconds.
+- **Robust Reconnection**: Automatically detects and recovers from transient network timeouts.
 
 ## License
 

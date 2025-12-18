@@ -6,7 +6,6 @@ the last N seconds as a video clip on demand.
 """
 
 import logging
-import os
 import threading
 import time
 from collections import deque

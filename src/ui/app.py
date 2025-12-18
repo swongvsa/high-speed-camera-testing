@@ -15,6 +15,7 @@ import gradio as gr
 import numpy as np
 
 from src.camera.capture import create_frame_generator
+from src.camera.init import enumerate_all_cameras
 from src.camera.recorder import VideoRecorder
 from src.ui.lifecycle import SessionLifecycle
 from src.ui.session import ViewerSession
@@ -44,6 +45,11 @@ def create_camera_app() -> gr.Blocks:
     # Create session manager and lifecycle
     session_manager = ViewerSession()
     lifecycle = SessionLifecycle(session_manager)
+
+    # Initial camera enumeration
+    available_cameras = enumerate_all_cameras()
+    camera_choices = [c.friendly_name for c in available_cameras]
+    camera_map = {c.friendly_name: c for c in available_cameras}
 
     # Create video recorder for clip saving (buffer up to 10 seconds)
     recorder = VideoRecorder(max_duration_sec=10.0, output_dir="./clips")
@@ -82,12 +88,14 @@ def create_camera_app() -> gr.Blocks:
             logger.error(f"Failed to apply exposure settings: {e}")
 
     def frame_stream(
+        camera_name: str,
         request: gr.Request,
     ) -> Iterator[tuple[np.ndarray, str, str]]:
         """
         Generator function for streaming raw camera frames to Gradio.
 
         Args:
+            camera_name: Selected camera name from dropdown
             request: Gradio request with session_hash
 
         Yields:
@@ -105,21 +113,19 @@ def create_camera_app() -> gr.Blocks:
         camera_info = "Waiting for camera..."
         buffer_status = "Buffer: 0.0s / 5.0s"
 
-        logger.info("🎬 Stream function called - Raw camera feed mode")
+        logger.info(f"🎬 Stream function called for {camera_name} - Raw camera feed mode")
 
-        # Only start session if not already started
-        if lifecycle.camera is None:
-            # First time - start session
-            error = lifecycle.on_session_start(session_hash)
-            if error:
-                logger.warning(f"Session blocked: {session_hash}")
-                # Display error and stop generator
-                gr.Warning(error)
-                return
-            logger.info(f"📹 Camera session started: {session_hash}")
-        else:
-            # Session already active - just update settings
-            logger.debug(f"Reusing existing camera session: {session_hash}")
+        # Get selected camera info
+        selected_info = camera_map.get(camera_name)
+
+        # Start or switch session
+        error = lifecycle.on_session_start(session_hash, selected_camera=selected_info)
+        if error:
+            logger.warning(f"Session blocked: {session_hash}")
+            # Display error and stop generator
+            gr.Warning(error)
+            return
+        logger.info(f"📹 Camera session active: {session_hash}")
 
         # Stream frames if camera initialized
         if lifecycle.camera:
@@ -168,7 +174,7 @@ def create_camera_app() -> gr.Blocks:
                     buffer_duration = recorder.get_buffer_duration()
                     buffer_frames = recorder.get_buffer_frame_count()
                     target_duration = clip_duration_sec["value"]
-                    
+
                     if buffer_duration >= target_duration:
                         buffer_status = (
                             f"Buffer: {buffer_duration:.1f}s / {target_duration:.1f}s ✅\n"
@@ -228,6 +234,14 @@ def create_camera_app() -> gr.Blocks:
                 )
 
             with gr.Column(scale=1):
+                gr.Markdown("### Camera Selection")
+                camera_dropdown = gr.Dropdown(
+                    label="Select Camera Source",
+                    choices=camera_choices,
+                    value=camera_choices[0] if camera_choices else None,
+                    interactive=True,
+                )
+
                 gr.Markdown("### Camera Controls")
 
                 gr.Markdown("### Exposure Control (Shutter Speed)")
@@ -310,6 +324,14 @@ def create_camera_app() -> gr.Blocks:
         # Use native streaming generator for stable video feed
         app.load(
             fn=frame_stream,
+            inputs=[camera_dropdown],
+            outputs=[image, camera_info_display, recording_status],
+        )
+
+        # Handle camera source change
+        camera_dropdown.change(
+            fn=frame_stream,
+            inputs=[camera_dropdown],
             outputs=[image, camera_info_display, recording_status],
         )
 
@@ -336,12 +358,12 @@ def create_camera_app() -> gr.Blocks:
             # Map provided args to keys
             values = list(args)
             new_settings = dict(zip(keys, values))
-            
+
             # Only log if settings actually changed
             if new_settings != current_settings:
                 current_settings.update(new_settings)
                 logger.info(f"🔄 Settings updated: {current_settings}")
-            
+
             return new_settings
 
         # Recording button callback
@@ -355,12 +377,16 @@ def create_camera_app() -> gr.Blocks:
             try:
                 # Get selected clip duration
                 requested_duration = clip_duration_sec["value"]
-                
+
                 # Check buffer status
                 buffer_duration = recorder.get_buffer_duration()
                 if buffer_duration < min(2.0, requested_duration):
-                    gr.Warning(f"Buffer only has {buffer_duration:.1f}s of video. Wait for buffer to fill.")
-                    return gr.DownloadButton(visible=False), "⚠️ Buffer too short, wait for more frames"
+                    gr.Warning(
+                        f"Buffer only has {buffer_duration:.1f}s of video. Wait for buffer to fill."
+                    )
+                    return gr.DownloadButton(
+                        visible=False
+                    ), "⚠️ Buffer too short, wait for more frames"
 
                 # Save clip with user-selected duration
                 logger.info(f"Saving video clip from buffer ({requested_duration:.1f}s)...")
@@ -369,12 +395,8 @@ def create_camera_app() -> gr.Blocks:
                 if clip_path:
                     logger.info(f"Video clip saved: {clip_path}")
                     return (
-                        gr.DownloadButton(
-                            label="⬇️ Download Clip",
-                            value=clip_path,
-                            visible=True
-                        ),
-                        f"✅ Clip saved successfully! ({requested_duration:.1f}s)"
+                        gr.DownloadButton(label="⬇️ Download Clip", value=clip_path, visible=True),
+                        f"✅ Clip saved successfully! ({requested_duration:.1f}s)",
                     )
                 else:
                     gr.Warning("Failed to save video clip")
@@ -398,7 +420,7 @@ def create_camera_app() -> gr.Blocks:
             """
             # Update global duration setting
             clip_duration_sec["value"] = duration
-            
+
             # Return updated button label
             if duration == int(duration):
                 return f"📹 Save Last {int(duration)} Seconds"
