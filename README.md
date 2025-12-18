@@ -8,6 +8,7 @@ Showcases camera's maximum FPS and native resolution for demos and presentations
 If you're new to Python, this guide will help you set up the environment step by step. Python is a programming language, and this project runs as a Python application. We'll use a "virtual environment" to keep dependencies isolated.
 
 ### Prerequisites
+
 - Python 3.12+ (The project targets Python 3.13, but 3.12+ is supported).
 - **Recommended**: [uv](https://docs.astral.sh/uv/) - a fast Python package and version manager.
 
@@ -16,6 +17,7 @@ If you're new to Python, this guide will help you set up the environment step by
 We recommend using `uv` for the fastest and most reliable setup. It can automatically manage Python versions and virtual environments for you.
 
 1. **Install uv**:
+
    ```bash
    # macOS/Linux
    curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -24,17 +26,21 @@ We recommend using `uv` for the fastest and most reliable setup. It can automati
    ```
 
 2. **Install Python via uv**:
+
    ```bash
    uv python install 3.13
    ```
 
 3. **Sync Project**:
+
    ```bash
    uv sync
    ```
+
    This automatically creates a virtual environment and installs all dependencies exactly as specified in `uv.lock`.
 
 4. **Run the App**:
+
    ```bash
    uv run python main.py
    ```
@@ -48,6 +54,7 @@ If you prefer using standard Python tools:
 1. **Install Python**: Download and install Python 3.12+ from [python.org](https://www.python.org/downloads/).
 
 2. **Create the virtual environment**:
+
    ```bash
    python -m venv .venv
    ```
@@ -57,11 +64,13 @@ If you prefer using standard Python tools:
    - **Windows**: `.venv\Scripts\activate`
 
 4. **Install Dependencies**:
+
    ```bash
    pip install -e .[dev]
    ```
 
 ### Deactivating the Environment
+
 When done, run `deactivate` in the terminal (if using the manual setup).
 
 Now proceed to the main installation steps below.
@@ -103,6 +112,7 @@ ls spec/Mac_sdk_m1*/lib/*.dylib    # macOS (M1/M2/M3)
 **Important for GigE Vision Cameras:** These cameras use link-local IP addressing (APIPA) by default, which means they auto-assign an IP in the 169.254.x.x range if no DHCP server is available. Your computer's Ethernet adapter must be on the same subnet (169.254.0.0/16) to communicate with the camera. USB cameras do not require this setup—they are plug-and-play.
 
 #### Why This Setup?
+
 - GigE cameras don't use your regular home/office network (which is usually 192.168.x.x or similar).
 - They rely on direct Ethernet connection with link-local IPs to avoid configuration conflicts.
 - Default camera IP: 169.254.22.149 (confirm yours using the camera's utility software if different).
@@ -114,10 +124,13 @@ ls spec/Mac_sdk_m1*/lib/*.dylib    # macOS (M1/M2/M3)
    - Do NOT connect to a router with DHCP—use a direct connection.
 
 2. **Find the Camera's IP (if not default):**
+
    - Use the MindVision camera configuration tool (included with SDK) or run:
-     ```
+
+     ```bash
      python -c "from src.lib import mvsdk; print(mvsdk.CameraEnumerateDevice())"
      ```
+
    - Look for the IP in the output (e.g., 169.254.22.149).
 
 3. **Configure Your Computer's Ethernet Adapter:**
@@ -130,28 +143,32 @@ ls spec/Mac_sdk_m1*/lib/*.dylib    # macOS (M1/M2/M3)
      6. Router/Gateway: Leave blank.
      7. Click OK → Apply.
    
-   - **Windows:**
-     1. Open Settings → Network & Internet → Ethernet → Change adapter options.
-     2. Right-click Ethernet → Properties → Internet Protocol Version 4 (TCP/IPv4) → Properties.
-     3. Select "Use the following IP address".
-     4. IP Address: 169.254.22.100.
-     5. Subnet Mask: 255.255.0.0.
-     6. Default Gateway: Leave blank.
-     7. Click OK.
-   
-   - **Linux (Ubuntu example):**
-     1. Edit `/etc/netplan/01-netcfg.yaml` (or similar).
-     2. Set: addresses: [169.254.22.100/16].
-     3. Apply: `sudo netplan apply`.
+    - **Windows**:
+      1. Open Settings → Network & Internet → Ethernet → Change adapter options.
+      2. Right-click Ethernet → Properties → Internet Protocol Version 4 (TCP/IPv4) → Properties.
+      3. Select "Use the following IP address".
+      4. IP Address: 169.254.22.100.
+      5. Subnet Mask: 255.255.0.0.
+      6. Default Gateway: Leave blank.
+      7. Click OK.
 
-4. **Verify Connectivity:**
-   ```
+    - **Linux (Ubuntu example)**:
+      1. Edit `/etc/netplan/01-netcfg.yaml` (or similar).
+      2. Set: addresses: [169.254.22.100/16].
+      3. Apply: `sudo netplan apply`.
+
+
+4. **Verify Connectivity**:
+
+   ```bash
    ping 169.254.22.149  # Replace with your camera's IP
    ```
+
    - You should see replies. If not, check cables, firewall, or IP conflicts.
 
-5. **Test Camera Detection:**
-   ```
+5. **Test Camera Detection**:
+
+   ```bash
    python main.py --camera-ip 169.254.22.149 --check
    ```
    - Success: "Camera initialized successfully".
@@ -184,7 +201,7 @@ Replace `python` with `uv run` for faster execution, e.g., `uv run python main.p
 
 ### Step 3: Access the Web Interface
 
-Open your browser to: **http://127.0.0.1:7860**
+Open your browser to: [http://127.0.0.1:7860](http://127.0.0.1:7860)
 
 - ✅ Camera feed displays automatically
 - ✅ Only one viewer allowed at a time
@@ -222,7 +239,7 @@ python main.py --camera-ip 169.254.22.149 --check
 
 ### Access the Interface
 
-Open browser to: **http://127.0.0.1:7860**
+Open browser to: [http://127.0.0.1:7860](http://127.0.0.1:7860)
 
 - Camera feed displays automatically
 - Only one viewer allowed at a time
@@ -273,12 +290,11 @@ Camera detected but initialization fails. **See TROUBLESHOOTING.md** for detaile
 
 Another application is using the camera. Close other programs and try again.
 
-```bash
-# On macOS, check for processes using camera
-lsof | grep -i camera
-
-# Kill other camera processes if needed
-```
+- On macOS, check for processes using camera:
+  ```bash
+  lsof | grep -i camera
+  ```
+- Kill other camera processes if needed.
 
 ### Low Frame Rate
 
@@ -304,7 +320,7 @@ python main.py --port 7861
 
 ### Project Structure
 
-```
+```text
 src/
 ├── camera/      # Camera hardware interaction
 ├── ui/          # Gradio web interface
@@ -345,12 +361,14 @@ ruff format src tests
 ## Documentation
 
 ### Application Docs
+
 - [Troubleshooting Guide](TROUBLESHOOTING.md) - Common issues and network setup
 - [SDK Implementation Reference](SDK_REFERENCE.md) - Deep dive into how we use the MindVision SDK
 - [Exposure Controls](EXPOSURE_CONTROLS.md) - Details on manual vs auto exposure
 - [Implementation Plan](specs/001-using-gradio-as/plan.md) - Original design specifications
 
 ### SDK Resources (under `spec/`)
+
 - `llm.txt` - AI-optimized SDK Specification v2.4 (English)
 - `manual.txt` - Full SDK technical manual (Chinese)
 - `python_demo/` - Reference Python implementations from the vendor
@@ -374,6 +392,7 @@ This implementation follows MindVision SDK best practices (see `SDK_REFERENCE.md
 ### Recent Improvements
 
 We recently refactored the capture pipeline to achieve:
+
 - **Higher Frame Rates**: Up to **25-30 FPS** (previously 10-15 FPS).
 - **Lower CPU Usage**: ~60% reduction in processing overhead.
 - **Faster Startup**: App initializes in 2-3 seconds.
@@ -386,6 +405,8 @@ See project license file.
 ## Support
 
 For camera hardware issues, consult:
+
 1. `TROUBLESHOOTING.md` - Common problems and solutions
 2. `spec/manual.txt` - Complete SDK documentation
 3. Camera manufacturer support
+
