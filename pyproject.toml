@@ -9,10 +9,20 @@ dependencies = [
     "opencv-python>=4.8",
 ]
 
-[project.optional-dependencies]
-dev = [
-    "pytest>=7.4",
-    "pytest-mock>=3.12",
-    "pytest-cov>=4.1",
-    "ruff>=0.1",
+[tool.ty.environment]
+python = ".venv/bin/python"
+python-version = "3.13"
+python-platform = "Darwin"
+
+[tool.ty.src]
+exclude = [
+    "src/lib/mvsdk.py",
+    "spec"
 ]
+
+[tool.ty.rules]
+unresolved-import = "ignore"
+unresolved-reference = "ignore"
+unresolved-attribute = "ignore"
+call-non-callable = "ignore"
+possibly-missing-attribute = "warn"

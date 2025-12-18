@@ -68,6 +68,12 @@ def create_camera_app() -> gr.Blocks:
         if lifecycle.camera is None:
             return
 
+        # Exposure control only supported for MindVision cameras for now
+        from src.camera.device import CameraDevice
+
+        if not isinstance(lifecycle.camera, CameraDevice):
+            return
+
         settings = current_settings.copy()
         auto_exposure = settings["auto_exposure"]
         exposure_time_ms = settings["exposure_time_ms"]

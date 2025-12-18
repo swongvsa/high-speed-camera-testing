@@ -111,7 +111,7 @@ class CameraDeviceProtocol(Protocol):
         Continuously yield frames from camera.
 
         Yields:
-            np.ndarray: Frame data (H×W×C for color, H×W for mono)
+            np.ndarray: Frame data (HÃ—WÃ—C for color, HÃ—W for mono)
 
         Contract:
             - FR-006: Must continuously update without manual refresh

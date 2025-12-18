@@ -5,6 +5,7 @@ Reference: specs/001-using-gradio-as/quickstart.md Scenario 5
 Maps to FR-012 (localhost-only security)
 """
 
+from typing import Any, cast
 import pytest
 
 from src.ui.app import launch_app
@@ -16,21 +17,21 @@ def test_localhost_enforcement():
     """
     # Valid: localhost only
     # (Don't actually launch, just test validation)
-    # This would succeed if we called launch_app(None, server_name="127.0.0.1")
+    # This would succeed if we called launch_app(cast(Any, None), server_name="127.0.0.1")
 
     # Invalid: external server_name
     with pytest.raises(ValueError, match="localhost only"):
-        launch_app(None, server_name="0.0.0.0")
+        launch_app(cast(Any, None), server_name="0.0.0.0")
 
     with pytest.raises(ValueError, match="localhost only"):
-        launch_app(None, server_name="192.168.1.100")
+        launch_app(cast(Any, None), server_name="192.168.1.100")
 
 
 def test_share_disabled():
     """Public sharing must be disabled"""
     # Invalid: share=True
     with pytest.raises(ValueError, match="sharing.*not allowed"):
-        launch_app(None, share=True)
+        launch_app(cast(Any, None), share=True)
 
 
 def test_default_localhost_settings():

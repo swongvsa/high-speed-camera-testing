@@ -4,13 +4,14 @@ Provides reusable pytest fixtures for unit and integration tests.
 
 Reference: /Users/swong/dev/high-speed-camera-testing/specs/001-using-gradio-as/data-model.md
 """
+
 import time
 
 import numpy as np
 import pytest
 
-from specs.contracts.camera_device import CameraCapability, CameraInfo
-from specs.contracts.video_frame import VideoFrame
+from src.camera.device import CameraCapability, CameraInfo
+from src.camera.video_frame import VideoFrame
 
 
 @pytest.fixture
@@ -26,11 +27,7 @@ def mock_camera_info() -> CameraInfo:
         - friendly_name must not be empty
         - port_type indicates connection type
     """
-    return CameraInfo(
-        device_index=0,
-        friendly_name="Test Camera USB 3.0",
-        port_type="USB"
-    )
+    return CameraInfo(device_index=0, friendly_name="Test Camera USB 3.0", port_type="USB")
 
 
 @pytest.fixture
@@ -41,11 +38,7 @@ def mock_camera_info_gige() -> CameraInfo:
     Returns:
         CameraInfo: GigE network camera
     """
-    return CameraInfo(
-        device_index=1,
-        friendly_name="Test Camera GigE",
-        port_type="GigE"
-    )
+    return CameraInfo(device_index=1, friendly_name="Test Camera GigE", port_type="GigE")
 
 
 @pytest.fixture
@@ -61,12 +54,7 @@ def mock_camera_capability() -> CameraCapability:
         - is_mono indicates sensor type
         - max_fps > 0
     """
-    return CameraCapability(
-        is_mono=False,
-        max_width=640,
-        max_height=480,
-        max_fps=60.0
-    )
+    return CameraCapability(is_mono=False, max_width=640, max_height=480, max_fps=60.0)
 
 
 @pytest.fixture
@@ -77,12 +65,7 @@ def mock_camera_capability_mono() -> CameraCapability:
     Returns:
         CameraCapability: Monochrome camera with higher resolution
     """
-    return CameraCapability(
-        is_mono=True,
-        max_width=1280,
-        max_height=1024,
-        max_fps=120.0
-    )
+    return CameraCapability(is_mono=True, max_width=1280, max_height=1024, max_fps=120.0)
 
 
 @pytest.fixture
@@ -184,7 +167,7 @@ def mock_video_frame_mono(mock_mono_frame) -> VideoFrame:
         channels=1,
         timestamp=time.time(),
         sequence_number=0,
-        media_type=0x01000001  # CAMERA_MEDIA_TYPE_MONO8
+        media_type=0x01000001,  # CAMERA_MEDIA_TYPE_MONO8
     )
 
 
@@ -208,7 +191,7 @@ def mock_video_frame_color(mock_color_frame) -> VideoFrame:
         channels=3,
         timestamp=time.time(),
         sequence_number=0,
-        media_type=0x02000002  # CAMERA_MEDIA_TYPE_BGR8
+        media_type=0x02000002,  # CAMERA_MEDIA_TYPE_BGR8
     )
 
 
@@ -229,6 +212,7 @@ def frame_sequence_generator():
         - Validating sequence_number monotonicity
         - Performance testing with large frame counts
     """
+
     def generate_frames(count: int = 10, is_mono: bool = False) -> list[VideoFrame]:
         """
         Generate sequence of VideoFrame objects.
@@ -260,7 +244,7 @@ def frame_sequence_generator():
                 channels=channels,
                 timestamp=base_time + (i * 0.016),  # ~60 FPS timing
                 sequence_number=i,
-                media_type=media_type
+                media_type=media_type,
             )
             frames.append(frame)
 
@@ -282,9 +266,9 @@ def mock_sdk_constants():
         assert frame.media_type == constants['MONO8']
     """
     return {
-        'CAMERA_MEDIA_TYPE_MONO8': 0x01000001,
-        'CAMERA_MEDIA_TYPE_BGR8': 0x02000002,
-        'CAMERA_STATUS_SUCCESS': 0,
-        'CAMERA_STATUS_TIME_OUT': -12,
-        'CAMERA_STATUS_DEVICE_LOST': -4,
+        "CAMERA_MEDIA_TYPE_MONO8": 0x01000001,
+        "CAMERA_MEDIA_TYPE_BGR8": 0x02000002,
+        "CAMERA_STATUS_SUCCESS": 0,
+        "CAMERA_STATUS_TIME_OUT": -12,
+        "CAMERA_STATUS_DEVICE_LOST": -4,
     }

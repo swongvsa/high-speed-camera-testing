@@ -64,7 +64,9 @@ class VideoRecorder:
         # Ensure output directory exists
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-        logger.info(f"VideoRecorder initialized: max_duration={max_duration_sec}s, output_dir={output_dir}")
+        logger.info(
+            f"VideoRecorder initialized: max_duration={max_duration_sec}s, output_dir={output_dir}"
+        )
 
     def add_frame(self, frame: np.ndarray) -> None:
         """
@@ -135,10 +137,7 @@ class VideoRecorder:
             cutoff_time = current_time - duration_sec
 
             # Extract frames within time range
-            frames_to_save = [
-                (ts, frame) for ts, frame in self._buffer
-                if ts >= cutoff_time
-            ]
+            frames_to_save = [(ts, frame) for ts, frame in self._buffer if ts >= cutoff_time]
 
             if len(frames_to_save) < 2:
                 logger.warning(f"Only {len(frames_to_save)} frames in requested duration")
@@ -155,7 +154,9 @@ class VideoRecorder:
         try:
             success = self._write_video_file(frames_to_save, output_path)
             if success:
-                logger.info(f"Saved video clip: {output_path} ({len(frames_to_save)} frames, {duration_sec:.1f}s)")
+                logger.info(
+                    f"Saved video clip: {output_path} ({len(frames_to_save)} frames, {duration_sec:.1f}s)"
+                )
 
                 # Cleanup old files
                 self._cleanup_old_clips()
@@ -205,14 +206,8 @@ class VideoRecorder:
         is_color = len(first_frame.shape) == 3 and first_frame.shape[2] == 3
 
         # Initialize video writer
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        writer = cv2.VideoWriter(
-            str(output_path),
-            fourcc,
-            fps,
-            (width, height),
-            isColor=is_color
-        )
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # type: ignore
+        writer = cv2.VideoWriter(str(output_path), fourcc, fps, (width, height), isColor=is_color)
 
         if not writer.isOpened():
             logger.error(f"Failed to open video writer for {output_path}")

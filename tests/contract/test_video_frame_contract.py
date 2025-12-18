@@ -29,7 +29,7 @@ class TestVideoFrameContract:
 
         # Should not be able to modify fields
         with pytest.raises(AttributeError):
-            frame.width = 800
+            frame.width = 800  # type: ignore
 
     def test_frame_color_shape(self):
         """Contract: Color frame has shape (H, W, 3)"""

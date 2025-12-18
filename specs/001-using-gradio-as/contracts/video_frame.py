@@ -1,201 +1,208 @@
 """
-Contract: VideoFrame Data Structure
-Defines the contract for video frame representation.
-Maps to FR-002, FR-006, FR-007, FR-009, FR-010
+Contract: CameraDevice Interface
+Defines the contract for camera hardware interaction.
+Maps to FR-001, FR-002, FR-003, FR-004, FR-005, FR-007, FR-009, FR-010
 """
 
-from typing import Protocol
+from typing import Protocol, Iterator
 from dataclasses import dataclass
 import numpy as np
 
 
-@dataclass(frozen=True)
-class VideoFrame:
+@dataclass
+class CameraInfo:
+    """Camera enumeration information"""
+
+    device_index: int
+    friendly_name: str
+    port_type: str
+
+
+@dataclass
+class CameraCapability:
+    """Camera hardware capabilities"""
+
+    is_mono: bool
+    max_width: int
+    max_height: int
+    max_fps: float
+
+
+class CameraDeviceProtocol(Protocol):
     """
-    Immutable video frame data.
+    Contract for camera device operations.
 
-    Contract:
-        - Immutable (frozen=True) - safe for multi-threaded access
-        - All fields required at construction
-        - Frame data is read-only after creation
+    Lifecycle:
+    1. enumerate_cameras() -> list of available cameras
+    2. __init__(camera_info) -> create instance
+    3. __enter__() -> initialize and start streaming
+    4. capture_frames() -> yield frames continuously
+    5. __exit__() -> cleanup resources
     """
 
-    data: np.ndarray  # Pixel data (H×W×C or H×W)
-    width: int  # Frame width in pixels
-    height: int  # Frame height in pixels
-    channels: int  # 1 for mono, 3 for color
-    timestamp: float  # Capture time (seconds since epoch)
-    sequence_number: int  # Monotonic frame counter
-    media_type: int  # SDK media type constant
-
-    def __post_init__(self):
+    @staticmethod
+    def enumerate_cameras() -> list[CameraInfo]:
         """
-        Validate frame integrity.
-
-        Contract:
-            - data.shape must match (height, width, channels) for color
-            - data.shape must match (height, width) for mono
-            - data.dtype must be uint8
-            - width, height > 0
-            - channels in [1, 3]
-            - timestamp > 0
-            - sequence_number >= 0
-
-        Raises:
-            ValueError: Validation failed
-        """
-        if self.channels == 3:
-            expected_shape = (self.height, self.width, self.channels)
-        else:
-            expected_shape = (self.height, self.width)
-
-        if self.data.shape != expected_shape:
-            raise ValueError(
-                f"Frame data shape {self.data.shape} != expected {expected_shape}"
-            )
-
-        if self.data.dtype != np.uint8:
-            raise ValueError(f"Frame data dtype {self.data.dtype} != uint8")
-
-        if self.width <= 0 or self.height <= 0:
-            raise ValueError(f"Invalid dimensions: {self.width}×{self.height}")
-
-        if self.channels not in [1, 3]:
-            raise ValueError(f"Invalid channel count: {self.channels}")
-
-        if self.timestamp <= 0:
-            raise ValueError(f"Invalid timestamp: {self.timestamp}")
-
-        if self.sequence_number < 0:
-            raise ValueError(f"Invalid sequence: {self.sequence_number}")
-
-    @property
-    def is_color(self) -> bool:
-        """
-        Contract: is_color == True iff channels == 3
-        """
-        return self.channels == 3
-
-    @property
-    def size_bytes(self) -> int:
-        """
-        Contract: Returns exact byte size of data array
-        """
-        return self.data.nbytes
-
-    def to_gradio_format(self) -> np.ndarray:
-        """
-        Convert frame to Gradio-compatible format.
+        Enumerate all connected cameras.
 
         Returns:
-            np.ndarray ready for gr.Image component
+            List of CameraInfo objects (empty list if no cameras)
+
+        Raises:
+            CameraException: SDK initialization failed
 
         Contract:
-            - Color frames: Return as-is (H×W×3 BGR)
-            - Mono frames: Return (H×W) grayscale
-            - No data copy (return view if possible)
+            - FR-001: Must detect all available cameras
+            - Returns empty list (not None) if no cameras
+            - Device indices must be 0-based sequential
         """
-        return self.data
+        ...
 
-
-class VideoFrameProtocol(Protocol):
-    """
-    Protocol for objects that can produce VideoFrames.
-    """
-
-    def create_frame(
-        self,
-        data: np.ndarray,
-        width: int,
-        height: int,
-        channels: int,
-        timestamp: float,
-        sequence_number: int,
-        media_type: int,
-    ) -> VideoFrame:
+    def __init__(self, camera_info: CameraInfo) -> None:
         """
-        Factory method for creating validated frames.
+        Create camera device instance (not initialized yet).
+
+        Args:
+            camera_info: Camera to connect to
 
         Contract:
-            - Must validate all parameters
-            - Must return immutable VideoFrame
-            - Raises ValueError on invalid data
+            - Must accept CameraInfo from enumerate_cameras()
+            - Does NOT initialize hardware (use __enter__)
         """
-        return VideoFrame(
-            data=data,
-            width=width,
-            height=height,
-            channels=channels,
-            timestamp=timestamp,
-            sequence_number=sequence_number,
-            media_type=media_type,
-        )
+        ...
+
+    def get_capability(self) -> CameraCapability:
+        """
+        Get camera hardware capabilities.
+
+        Returns:
+            CameraCapability with resolution and format info
+
+        Contract:
+            - FR-007: Must indicate mono vs color
+            - FR-010: Must provide native max resolution
+            - FR-009: Must provide max FPS capability
+            - Only callable after __enter__()
+
+        Raises:
+            RuntimeError: Camera not initialized
+        """
+        ...
+
+    def __enter__(self) -> "CameraDeviceProtocol":
+        """
+        Initialize camera and start streaming.
+
+        Returns:
+            Self (for context manager)
+
+        Contract:
+            - FR-002: Must initialize camera for streaming
+            - FR-003: Must start auto-capture mode
+            - FR-009: Set to maximum FPS mode
+            - FR-010: Use native resolution
+
+        Raises:
+            CameraException: Initialization or start failed
+            CameraAccessDenied: Camera already in use
+        """
+        ...
+
+    def capture_frames(self) -> Iterator[np.ndarray]:
+        """
+        Continuously yield frames from camera.
+
+        Yields:
+            np.ndarray: Frame data (HÃƒÂ—WÃƒÂ—C for color, HÃƒÂ—W for mono)
+
+        Contract:
+            - FR-006: Must continuously update without manual refresh
+            - Timeout allowed (skip frame), don't raise exception
+            - Yields until camera error or __exit__()
+
+        Raises:
+            RuntimeError: Camera not initialized
+            CameraException: Fatal camera error (not timeout)
+        """
+        ...
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        """
+        Release camera resources.
+
+        Contract:
+            - FR-005: Must release camera (available for other apps)
+            - Must free allocated frame buffers
+            - Must call SDK cleanup functions
+            - Must not raise exceptions (log errors only)
+        """
+        ...
+
+
+class CameraException(Exception):
+    """Camera operation failed"""
+
+    def __init__(self, message: str, error_code: int):
+        super().__init__(message)
+        self.error_code = error_code
+
+
+class CameraAccessDenied(CameraException):
+    """Camera already in use (single viewer enforcement)"""
+
+    pass
 
 
 # Contract Tests (to be implemented in tests/contract/)
 
-def test_frame_immutable():
-    """Contract: VideoFrame is immutable (frozen)"""
+
+def test_enumerate_returns_list():
+    """Contract: enumerate_cameras() returns list, not None"""
     ...
 
 
-def test_frame_color_shape():
-    """Contract: Color frame has shape (H, W, 3)"""
+def test_enumerate_no_cameras():
+    """Contract: enumerate_cameras() returns [] when no cameras"""
     ...
 
 
-def test_frame_mono_shape():
-    """Contract: Mono frame has shape (H, W)"""
+def test_camera_lifecycle():
+    """Contract: Can enumerate -> init -> enter -> capture -> exit"""
     ...
 
 
-def test_frame_dtype():
-    """Contract: Frame data is uint8"""
+def test_camera_cleanup_on_error():
+    """Contract: __exit__() called even if __enter__() fails"""
     ...
 
 
-def test_frame_validates_shape_mismatch():
-    """Contract: Raises ValueError if data.shape != (height, width, channels)"""
+def test_single_access_enforcement():
+    """Contract: Second __enter__() raises CameraAccessDenied"""
     ...
 
 
-def test_frame_validates_channels():
-    """Contract: Raises ValueError if channels not in [1, 3]"""
+def test_capability_requires_init():
+    """Contract: get_capability() before __enter__() raises RuntimeError"""
     ...
 
 
-def test_frame_validates_dimensions():
-    """Contract: Raises ValueError if width or height <= 0"""
+def test_capture_requires_init():
+    """Contract: capture_frames() before __enter__() raises RuntimeError"""
     ...
 
 
-def test_frame_validates_timestamp():
-    """Contract: Raises ValueError if timestamp <= 0"""
+def test_frame_format_color():
+    """Contract: Color camera yields (H, W, 3) arrays"""
     ...
 
 
-def test_frame_validates_sequence():
-    """Contract: Raises ValueError if sequence_number < 0"""
+def test_frame_format_mono():
+    """Contract: Mono camera yields (H, W) arrays"""
     ...
 
 
-def test_is_color_property():
-    """Contract: is_color == True iff channels == 3"""
-    ...
-
-
-def test_size_bytes_property():
-    """Contract: size_bytes == data.nbytes"""
-    ...
-
-
-def test_to_gradio_format_color():
-    """Contract: Color frames return BGR (H×W×3)"""
-    ...
-
-
-def test_to_gradio_format_mono():
-    """Contract: Mono frames return grayscale (H×W)"""
+def test_native_resolution():
+    """Contract: Frames match CameraCapability max_width/max_height"""
     ...
 
 
