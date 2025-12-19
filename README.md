@@ -86,6 +86,9 @@ Now proceed to the main installation steps below.
 ## Features
 
 - ✅ Live camera feed at native resolution and maximum FPS
+- ✅ High-speed recording up to **1594+ FPS** with slow-motion playback
+- ✅ ROI (Region of Interest) presets for bandwidth optimization
+- ✅ Decoupled capture architecture (background thread for max performance)
 - ✅ Auto-start streaming on page load
 - ✅ Single-viewer enforcement (exclusive camera access)
 - ✅ Localhost-only access for security
@@ -245,6 +248,28 @@ Open browser to: [http://127.0.0.1:7860](http://127.0.0.1:7860)
 - Only one viewer allowed at a time
 - Close browser to release camera
 
+### High-Speed Controls
+
+The UI includes advanced controls for high-speed recording:
+
+1. **ROI Presets** - Select resolution for bandwidth optimization:
+   - Full Res (816×624) - Standard recording
+   - 720p (816×480) - HD video capture  
+   - Half (816×312) - Medium speed events
+   - Quarter (816×156) - Fast motion analysis
+   - Extreme (816×64) - Ultra high-speed capture (1594+ FPS)
+
+2. **Frame Rate Control**:
+   - **Target FPS** - Set desired capture frame rate (30-1600)
+   - **Playback FPS** - Output frame rate for slow-motion (15-60)
+   - **Shutter Speed** - Exposure time (0.1-100ms)
+   - **Analog Gain** - Amplification for short exposures
+
+3. **Slow-Motion Recording**:
+   - Enable recording with "Start Recording" button
+   - Set capture duration and playback speed
+   - System saves slow-motion video automatically
+
 ### Exposure Control
 
 The UI includes manual and automatic exposure control:
@@ -393,10 +418,49 @@ This implementation follows MindVision SDK best practices (see `SDK_REFERENCE.md
 
 We recently refactored the capture pipeline to achieve:
 
-- **Higher Frame Rates**: Up to **25-30 FPS** (previously 10-15 FPS).
+- **High-Speed Recording**: Up to **1600 FPS** with dedicated recorder for slow-motion playback
+- **ROI Support**: Region of Interest presets (Full, 720p, Half, Quarter, Extreme) for bandwidth optimization
+- **Decoupled Architecture**: Background capture thread enables camera to run at max FPS while UI displays at 25 FPS
+- **Automatic Exposure/FPS Coordination**: System automatically adjusts exposure when FPS increases
 - **Lower CPU Usage**: ~60% reduction in processing overhead.
 - **Faster Startup**: App initializes in 2-3 seconds.
 - **Robust Reconnection**: Automatically detects and recovers from transient network timeouts.
+
+## High-Speed Recording Guide
+
+### Maximum FPS Achievement
+
+To achieve the highest frame rates (up to 1594+ FPS):
+
+1. **Select Extreme ROI**: Use "Extreme High-Speed" preset (816x64 pixels)
+2. **Set Shutter Speed**: 0.5ms or lower for minimal motion blur
+3. **Adjust Analog Gain**: Compensate for short exposure brightness
+4. **Target FPS**: Set to 1600 (camera will auto-limit to maximum achievable)
+5. **Playback FPS**: 30 for 53x slow-motion effect
+
+### ROI Presets and Maximum FPS
+
+| Preset | Resolution | Max FPS | Use Case |
+|--------|------------|---------|----------|
+| Full Res | 816×624 | ~120 | Standard recording |
+| 720p | 816×480 | ~200 | HD video capture |
+| Half | 816×312 | ~400 | Medium speed events |
+| Quarter | 816×156 | ~800 | Fast motion analysis |
+| Extreme | 816×64 | 1594+ | Ultra high-speed capture |
+
+### Slow-Motion Recording
+
+1. **Enable Recording**: Click "Start Recording" in the UI
+2. **Set Duration**: Choose capture duration (1-60 seconds)
+3. **Configure Slow-Motion**: Set Target FPS (capture) and Playback FPS (output)
+4. **Save Video**: System automatically saves slow-motion .mp4 file
+
+### Performance Tips
+
+- **GigE Bandwidth**: Lower resolution reduces network load, enabling higher FPS
+- **CPU Usage**: Background capture minimizes UI impact
+- **Storage**: High-speed recordings create large files - ensure adequate disk space
+- **Lighting**: Use bright lighting for short exposures at high FPS
 
 ## License
 

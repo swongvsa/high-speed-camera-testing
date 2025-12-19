@@ -64,7 +64,7 @@ class CameraCapability:
 # ------------------------------------------------------------------
 
 
-class CameraException(Exception):
+class CameraError(Exception):
     """Camera operation failed"""
 
     def __init__(self, message: str, error_code: int):
@@ -72,7 +72,7 @@ class CameraException(Exception):
         self.error_code = error_code
 
 
-class CameraAccessDenied(CameraException):
+class CameraAccessDeniedError(CameraError):
     """Camera already in use (single viewer enforcement)"""
 
     pass
@@ -137,7 +137,7 @@ class CameraDevice:
             List of CameraInfo objects (empty list if no cameras)
 
         Raises:
-            CameraException: SDK initialization failed
+            CameraError: SDK initialization failed
 
         Contract:
             - FR-001: Must detect all available cameras
@@ -159,9 +159,9 @@ class CameraDevice:
 
             return cameras
 
-        except mvsdk.CameraException as e:
+        except mvsdk.CameraError as e:
             error_str = mvsdk.CameraGetErrorString(e.error_code)
-            raise CameraException(f"Camera enumeration failed: {error_str}", e.error_code)
+            raise CameraError(f"Camera enumeration failed: {error_str}", e.error_code)
 
     def get_capability(self) -> CameraCapability:
         """
@@ -215,7 +215,7 @@ class CameraDevice:
 
         Raises:
             RuntimeError: Camera not initialized
-            CameraException: SDK call failed
+            CameraError: SDK call failed
 
         Contract:
             - Spec section 5.1: Manual exposure control
@@ -225,13 +225,168 @@ class CameraDevice:
             raise RuntimeError("Camera not initialized. Call __enter__() first.")
 
         try:
-            # Ensure manual exposure mode
+            # Ensure manual exposure mode (0 = manual, 1 = auto)
             mvsdk.CameraSetAeState(self._handle, 0)
+
+            # Get exposure range to validate/clamp the value
+            exp_min, exp_max, exp_step = mvsdk.CameraGetExposureTimeRange(self._handle)
+
+            # Clamp to valid range
+            clamped_us = max(exp_min, min(exp_max, exposure_us))
+            if clamped_us != exposure_us:
+                logger.warning(
+                    f"Exposure {exposure_us}us clamped to [{exp_min}, {exp_max}] -> {clamped_us}us"
+                )
+
             # Set exposure time
-            mvsdk.CameraSetExposureTime(self._handle, exposure_us)
-        except mvsdk.CameraException as e:
+            mvsdk.CameraSetExposureTime(self._handle, clamped_us)
+
+            # Verify the actual value set (CMOS sensors quantize to line times)
+            actual_us = mvsdk.CameraGetExposureTime(self._handle)
+            logger.info(
+                f"Exposure set: requested={exposure_us:.1f}us, actual={actual_us:.1f}us "
+                f"(range: {exp_min:.1f}-{exp_max:.1f}us)"
+            )
+        except mvsdk.CameraError as e:
             error_str = mvsdk.CameraGetErrorString(e.error_code)
-            raise CameraException(f"Failed to set exposure time: {error_str}", e.error_code)
+            raise CameraError(f"Failed to set exposure time: {error_str}", e.error_code)
+
+    def set_frame_rate(self, fps: int) -> None:
+        """
+        Set camera capture frame rate.
+
+        Args:
+            fps: Desired frame rate in FPS
+
+        Raises:
+            RuntimeError: Camera not initialized
+            CameraError: SDK call failed
+        """
+        if not self._initialized or self._handle is None:
+            raise RuntimeError("Camera not initialized. Call __enter__() first.")
+
+        try:
+            # Set frame rate
+            mvsdk.CameraSetFrameRate(self._handle, fps)
+
+            # Verify actual frame rate
+            actual_fps = mvsdk.CameraGetFrameRate(self._handle)
+            logger.info(f"Frame rate set: requested={fps}, actual={actual_fps}")
+
+            # Note: exposure time must be < 1/fps for this to be effective
+            exposure_limit_us = (1.0 / fps) * 1_000_000
+            current_exposure_us = mvsdk.CameraGetExposureTime(self._handle)
+
+            if current_exposure_us > exposure_limit_us:
+                logger.warning(
+                    f"Current exposure ({current_exposure_us:.1f}us) is too long for "
+                    f"requested FPS ({fps} -> {exposure_limit_us:.1f}us limit). "
+                    f"FPS will be limited by exposure."
+                )
+        except mvsdk.CameraError as e:
+            error_str = mvsdk.CameraGetErrorString(e.error_code)
+            raise CameraError(f"Failed to set frame rate: {error_str}", e.error_code)
+
+    def set_gain(self, gain: float) -> None:
+        """
+        Set camera analog gain.
+
+        Args:
+            gain: Analog gain multiplier (typically 1.0 to 16.0+)
+
+        Raises:
+            RuntimeError: Camera not initialized
+            CameraError: SDK call failed
+        """
+        if not self._initialized or self._handle is None:
+            raise RuntimeError("Camera not initialized. Call __enter__() first.")
+
+        try:
+            mvsdk.CameraSetAnalogGainX(self._handle, gain)
+            logger.info(f"Analog gain set to {gain:.2f}x")
+        except mvsdk.CameraError as e:
+            error_str = mvsdk.CameraGetErrorString(e.error_code)
+            raise CameraError(f"Failed to set analog gain: {error_str}", e.error_code)
+
+    def set_roi(self, width: int, height: int, offset_x: int = 0, offset_y: int = 0) -> None:
+        """
+        Set Region of Interest (ROI) to increase frame rate.
+
+        Args:
+            width: ROI width (multiple of 16)
+            height: ROI height (multiple of 4)
+            offset_x: Horizontal offset (multiple of 16)
+            offset_y: Vertical offset (multiple of 4)
+
+        Raises:
+            RuntimeError: Camera not initialized
+            CameraError: SDK call failed
+        """
+        if not self._initialized or self._handle is None or self._capability is None:
+            raise RuntimeError("Camera not initialized. Call __enter__() first.")
+
+        # Ensure values are within hardware limits
+        max_w = self._capability.sResolutionRange.iWidthMax
+        max_h = self._capability.sResolutionRange.iHeightMax
+
+        width = max(16, min(max_w, (width // 16) * 16))
+        height = max(4, min(max_h, (height // 4) * 4))
+        offset_x = max(0, min(max_w - width, (offset_x // 16) * 16))
+        offset_y = max(0, min(max_h - height, (offset_y // 4) * 4))
+
+        try:
+            # Configure resolution structure
+            res = mvsdk.tSdkImageResolution()
+            res.iIndex = 0xFF  # Custom ROI
+            res.iWidth = width
+            res.iHeight = height
+            res.iWidthFOV = width
+            res.iHeightFOV = height
+            res.iHOffsetFOV = offset_x
+            res.iVOffsetFOV = offset_y
+
+            # ISP output should match ROI
+            mvsdk.CameraSetImageResolution(self._handle, res)
+
+            logger.info(f"ROI set: {width}x{height} at ({offset_x}, {offset_y})")
+
+            # Note: We don't necessarily need to reallocate the buffer if it was
+            # already allocated at max resolution size, but we might need to
+            # signal the recorder that frame sizes have changed.
+
+        except mvsdk.CameraError as e:
+            error_str = mvsdk.CameraGetErrorString(e.error_code)
+            raise CameraError(f"Failed to set ROI: {error_str}", e.error_code)
+
+    def set_auto_exposure(self, enabled: bool, max_exposure_us: Optional[int] = None) -> None:
+        """
+        Enable or disable auto-exposure mode.
+
+        Args:
+            enabled: True to enable auto-exposure, False for manual
+            max_exposure_us: Maximum exposure time in microseconds when auto is enabled
+
+        Raises:
+            RuntimeError: Camera not initialized
+            CameraError: SDK call failed
+        """
+        if not self._initialized or self._handle is None:
+            raise RuntimeError("Camera not initialized. Call __enter__() first.")
+
+        try:
+            if enabled:
+                mvsdk.CameraSetAeState(self._handle, 1)  # Enable auto-exposure
+                if max_exposure_us is not None:
+                    mvsdk.CameraSetAeExposureRange(self._handle, 100, max_exposure_us)
+                    logger.info(f"Auto-exposure enabled (max: {max_exposure_us / 1000:.1f}ms)")
+                else:
+                    logger.info("Auto-exposure enabled")
+            else:
+                mvsdk.CameraSetAeState(self._handle, 0)  # Disable auto-exposure
+                logger.info("Auto-exposure disabled (manual mode)")
+        except mvsdk.CameraError as e:
+            error_str = mvsdk.CameraGetErrorString(e.error_code)
+            raise CameraError(f"Failed to set auto-exposure: {error_str}", e.error_code)
 
     def __enter__(self) -> "CameraDevice":
         """
@@ -247,13 +402,13 @@ class CameraDevice:
             - FR-010: Use native resolution
 
         Raises:
-            CameraException: Initialization or start failed
-            CameraAccessDenied: Camera already in use
+            CameraError: Initialization or start failed
+            CameraAccessDeniedError: Camera already in use
         """
         # Enforce single access per device (FR-006a)
         with self._access_lock:
             if self._camera_info.device_index in self._active_devices:
-                raise CameraAccessDenied(
+                raise CameraAccessDeniedError(
                     "Camera already in use. Only one viewer allowed.", error_code=-1
                 )
             self._active_devices.add(self._camera_info.device_index)
@@ -276,7 +431,7 @@ class CameraDevice:
             # Re-enumerate to get fresh device info
             dev_list = mvsdk.CameraEnumerateDevice()
             if self._camera_info.device_index >= len(dev_list):
-                raise CameraException(
+                raise CameraError(
                     f"Camera index {self._camera_info.device_index} not found", error_code=-1
                 )
 
@@ -323,7 +478,7 @@ class CameraDevice:
 
             self._initialized = True
 
-        except mvsdk.CameraException as e:
+        except mvsdk.CameraError as e:
             # Cleanup on initialization failure
             if self._handle is not None:
                 try:
@@ -337,7 +492,7 @@ class CameraDevice:
                     pass
 
             error_str = mvsdk.CameraGetErrorString(e.error_code)
-            raise CameraException(f"Camera initialization failed: {error_str}", e.error_code)
+            raise CameraError(f"Camera initialization failed: {error_str}", e.error_code)
 
     def capture_frames(self) -> Iterator[np.ndarray]:
         """
@@ -353,7 +508,7 @@ class CameraDevice:
 
         Raises:
             RuntimeError: Camera not initialized
-            CameraException: Fatal camera error (not timeout)
+            CameraError: Fatal camera error (not timeout)
         """
         if not self._initialized:
             raise RuntimeError("Camera not initialized. Call __enter__() first.")
@@ -361,34 +516,34 @@ class CameraDevice:
         while self._initialized:
             try:
                 # Get raw frame from camera (500ms timeout)
-                pRawData, FrameHead = mvsdk.CameraGetImageBuffer(self._handle, 500)
+                raw_data, frame_head = mvsdk.CameraGetImageBuffer(self._handle, 500)
 
                 # Process raw data to RGB/MONO format
-                mvsdk.CameraImageProcess(self._handle, pRawData, self._frame_buffer, FrameHead)
+                mvsdk.CameraImageProcess(self._handle, raw_data, self._frame_buffer, frame_head)
 
                 # Release the raw buffer
-                mvsdk.CameraReleaseImageBuffer(self._handle, pRawData)
+                mvsdk.CameraReleaseImageBuffer(self._handle, raw_data)
 
                 # Windows requires vertical flip (from research.md)
                 if platform.system() == "Windows":
-                    mvsdk.CameraFlipFrameBuffer(self._frame_buffer, FrameHead, 1)
+                    mvsdk.CameraFlipFrameBuffer(self._frame_buffer, frame_head, 1)
 
                 # Convert to NumPy array (zero-copy using ctypes)
-                frame_data = (mvsdk.c_ubyte * FrameHead.uBytes).from_address(self._frame_buffer)
+                frame_data = (mvsdk.c_ubyte * frame_head.uBytes).from_address(self._frame_buffer)
                 frame = np.frombuffer(frame_data, dtype=np.uint8)
 
                 # Reshape based on camera type (FR-007)
-                if FrameHead.uiMediaType == mvsdk.CAMERA_MEDIA_TYPE_MONO8:
+                if frame_head.uiMediaType == mvsdk.CAMERA_MEDIA_TYPE_MONO8:
                     # Mono: (H, W)
-                    frame = frame.reshape((FrameHead.iHeight, FrameHead.iWidth))
+                    frame = frame.reshape((frame_head.iHeight, frame_head.iWidth))
                 else:
                     # Color: (H, W, 3) - convert BGR to RGB for Gradio
-                    frame = frame.reshape((FrameHead.iHeight, FrameHead.iWidth, 3))
+                    frame = frame.reshape((frame_head.iHeight, frame_head.iWidth, 3))
                     frame = frame[..., ::-1]  # BGR -> RGB
 
                 yield frame
 
-            except mvsdk.CameraException as e:
+            except mvsdk.CameraError as e:
                 # Timeout is expected and normal (FR-006 contract)
                 if e.error_code == mvsdk.CAMERA_STATUS_TIME_OUT:
                     # Increment consecutive timeout counter
@@ -424,7 +579,7 @@ class CameraDevice:
 
                 # Other errors are fatal
                 error_str = mvsdk.CameraGetErrorString(e.error_code)
-                raise CameraException(f"Frame capture failed: {error_str}", e.error_code)
+                raise CameraError(f"Frame capture failed: {error_str}", e.error_code)
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         """
@@ -505,7 +660,7 @@ class CameraDevice:
             self._initialize()
             logger.info("Camera reconnection successful")
             return True
-        except CameraException as e:
+        except CameraError as e:
             logger.error(f"Camera reconnection failed: {e}")
             # Keep initialized=False and return failure
             # Caller will handle this by returning None
@@ -520,7 +675,7 @@ class CameraDevice:
             None: If camera not initialized or timeout
 
         Raises:
-            CameraException: Frame capture failed (non-timeout error)
+            CameraError: Frame capture failed (non-timeout error)
         """
         with self._frame_lock:
             return self._get_frame_locked()
@@ -564,33 +719,33 @@ class CameraDevice:
 
         try:
             # Get raw frame from camera (500ms timeout)
-            pRawData, FrameHead = mvsdk.CameraGetImageBuffer(self._handle, 500)
+            raw_data, frame_head = mvsdk.CameraGetImageBuffer(self._handle, 500)
 
             # Process raw data to RGB/MONO format
-            mvsdk.CameraImageProcess(self._handle, pRawData, self._frame_buffer, FrameHead)
+            mvsdk.CameraImageProcess(self._handle, raw_data, self._frame_buffer, frame_head)
 
             # Release the raw buffer
-            mvsdk.CameraReleaseImageBuffer(self._handle, pRawData)
+            mvsdk.CameraReleaseImageBuffer(self._handle, raw_data)
 
             # Windows requires vertical flip
             if platform.system() == "Windows":
-                mvsdk.CameraFlipFrameBuffer(self._frame_buffer, FrameHead, 1)
+                mvsdk.CameraFlipFrameBuffer(self._frame_buffer, frame_head, 1)
 
             # Convert to NumPy array
-            frame_data = (mvsdk.c_ubyte * FrameHead.uBytes).from_address(self._frame_buffer)
+            frame_data = (mvsdk.c_ubyte * frame_head.uBytes).from_address(self._frame_buffer)
             frame = np.frombuffer(frame_data, dtype=np.uint8)
 
             # Reshape based on camera type
-            if FrameHead.uiMediaType == mvsdk.CAMERA_MEDIA_TYPE_MONO8:
-                frame = frame.reshape((FrameHead.iHeight, FrameHead.iWidth))
+            if frame_head.uiMediaType == mvsdk.CAMERA_MEDIA_TYPE_MONO8:
+                frame = frame.reshape((frame_head.iHeight, frame_head.iWidth))
             else:
                 # Color: convert BGR to RGB
-                frame = frame.reshape((FrameHead.iHeight, FrameHead.iWidth, 3))
+                frame = frame.reshape((frame_head.iHeight, frame_head.iWidth, 3))
                 frame = frame[..., ::-1]  # BGR -> RGB
 
             return frame
 
-        except mvsdk.CameraException as e:
+        except mvsdk.CameraError as e:
             # Treat timeout as non-fatal for single-frame capture: return None
             if e.error_code == mvsdk.CAMERA_STATUS_TIME_OUT:
                 # Rate-limit timeout logging to avoid spam
@@ -617,4 +772,4 @@ class CameraDevice:
 
                 return None
             error_str = mvsdk.CameraGetErrorString(e.error_code)
-            raise CameraException(f"Frame capture failed: {error_str}", e.error_code)
+            raise CameraError(f"Frame capture failed: {error_str}", e.error_code)

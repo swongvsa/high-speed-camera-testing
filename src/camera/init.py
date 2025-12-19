@@ -12,7 +12,7 @@ import logging
 import os
 from typing import Optional, Tuple, Union
 
-from src.camera.device import CameraDevice, CameraException, CameraInfo
+from src.camera.device import CameraDevice, CameraError, CameraInfo
 from src.camera.webcam import WebcamDevice
 
 logger = logging.getLogger(__name__)
@@ -104,7 +104,7 @@ def initialize_camera(
             "Initialized camera: %s (%dx%d)", selected.friendly_name, cap.max_width, cap.max_height
         )
         return camera, None
-    except CameraException as e:
+    except CameraError as e:
         msg = f"Camera init failed: {e}"
         logger.error(msg)
         return None, msg

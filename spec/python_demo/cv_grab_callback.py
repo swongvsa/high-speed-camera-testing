@@ -29,7 +29,7 @@ class App(object):
 		hCamera = 0
 		try:
 			hCamera = mvsdk.CameraInit(DevInfo, -1, -1)
-		except mvsdk.CameraException as e:
+		except mvsdk.CameraError as e:
 			print("CameraInit Failed({}): {}".format(e.error_code, e.message) )
 			return
 

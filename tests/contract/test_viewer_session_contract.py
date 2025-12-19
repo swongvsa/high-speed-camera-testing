@@ -20,10 +20,10 @@ class TestViewerSessionContract:
         session_mgr = get_viewer_session()
 
         # First session should succeed
-        assert session_mgr.try_start_session("session-1") == True
+        assert session_mgr.try_start_session("session-1")
 
         # Second session should fail (session-1 still active)
-        assert session_mgr.try_start_session("session-2") == False
+        assert not session_mgr.try_start_session("session-2")
 
         # Verify first session is still active
         active = session_mgr.get_active_session()
@@ -40,10 +40,10 @@ class TestViewerSessionContract:
         session_mgr = get_viewer_session()
 
         # First start
-        assert session_mgr.try_start_session("session-1") == True
+        assert session_mgr.try_start_session("session-1")
 
         # Same session retrying should succeed (idempotent)
-        assert session_mgr.try_start_session("session-1") == True
+        assert session_mgr.try_start_session("session-1")
 
         # Verify session is still active
         active = session_mgr.get_active_session()
@@ -60,13 +60,13 @@ class TestViewerSessionContract:
         session_mgr = get_viewer_session()
 
         # Start first session
-        assert session_mgr.try_start_session("session-1") == True
+        assert session_mgr.try_start_session("session-1")
 
         # End first session
         session_mgr.end_session("session-1")
 
         # New session should now succeed
-        assert session_mgr.try_start_session("session-2") == True
+        assert session_mgr.try_start_session("session-2")
 
         # Verify new session is active
         active = session_mgr.get_active_session()
@@ -86,7 +86,7 @@ class TestViewerSessionContract:
         session_mgr.end_session("non-existent")
 
         # Start a session
-        assert session_mgr.try_start_session("session-1") == True
+        assert session_mgr.try_start_session("session-1")
 
         # End it
         session_mgr.end_session("session-1")
@@ -106,14 +106,14 @@ class TestViewerSessionContract:
 
         # Start session
         before_time = datetime.now()
-        assert session_mgr.try_start_session("session-1") == True
+        assert session_mgr.try_start_session("session-1")
         after_time = datetime.now()
 
         # Get active session info
         active = session_mgr.get_active_session()
         assert active is not None
         assert active.session_hash == "session-1"
-        assert active.is_active == True
+        assert active.is_active
         assert before_time <= active.start_time <= after_time
 
         # Clean up
@@ -130,7 +130,7 @@ class TestViewerSessionContract:
         assert active is None
 
         # Start and end session
-        assert session_mgr.try_start_session("session-1") == True
+        assert session_mgr.try_start_session("session-1")
         session_mgr.end_session("session-1")
 
         # Should return None again
@@ -144,10 +144,10 @@ class TestViewerSessionContract:
         session_mgr = get_viewer_session()
 
         # Start session
-        assert session_mgr.try_start_session("session-1") == True
+        assert session_mgr.try_start_session("session-1")
 
         # Check if active
-        assert session_mgr.is_session_active("session-1") == True
+        assert session_mgr.is_session_active("session-1")
 
         # Clean up
         session_mgr.end_session("session-1")
@@ -159,13 +159,13 @@ class TestViewerSessionContract:
         session_mgr = get_viewer_session()
 
         # Check non-existent session
-        assert session_mgr.is_session_active("unknown") == False
+        assert not session_mgr.is_session_active("unknown")
 
         # Start session-1
-        assert session_mgr.try_start_session("session-1") == True
+        assert session_mgr.try_start_session("session-1")
 
         # Check different session
-        assert session_mgr.is_session_active("session-2") == False
+        assert not session_mgr.is_session_active("session-2")
 
         # Clean up
         session_mgr.end_session("session-1")
@@ -194,7 +194,7 @@ class TestViewerSessionContract:
             t.join()
 
         # Exactly one should succeed
-        successes = [r for r in results if r[1] == True]
+        successes = [r for r in results if r[1]]
         assert len(successes) == 1
 
         # Verify the winning session is active
@@ -227,18 +227,18 @@ class TestStreamStateContract:
         stream_state = get_stream_state()
 
         # Start session first
-        assert session_mgr.try_start_session("session-1") == True
+        assert session_mgr.try_start_session("session-1")
 
         # Initially not streaming
-        assert stream_state.is_streaming() == False
+        assert not stream_state.is_streaming()
 
         # Start streaming
         stream_state.start_streaming("session-1")
-        assert stream_state.is_streaming() == True
+        assert stream_state.is_streaming()
 
         # Stop streaming
         stream_state.stop_streaming("session-1")
-        assert stream_state.is_streaming() == False
+        assert not stream_state.is_streaming()
 
         # Clean up
         session_mgr.end_session("session-1")
@@ -251,7 +251,7 @@ class TestStreamStateContract:
         stream_state = get_stream_state()
 
         # Start session and streaming
-        assert session_mgr.try_start_session("session-1") == True
+        assert session_mgr.try_start_session("session-1")
         stream_state.start_streaming("session-1")
 
         # Increment frame count
@@ -275,7 +275,7 @@ class TestStreamStateContract:
         stream_state = get_stream_state()
 
         # Start session and streaming
-        assert session_mgr.try_start_session("session-1") == True
+        assert session_mgr.try_start_session("session-1")
         stream_state.start_streaming("session-1")
 
         # Increment error count to threshold
@@ -299,7 +299,7 @@ class TestStreamStateContract:
         stream_state = get_stream_state()
 
         # Start session and streaming
-        assert session_mgr.try_start_session("session-1") == True
+        assert session_mgr.try_start_session("session-1")
         stream_state.start_streaming("session-1")
 
         # Increment error count
@@ -325,7 +325,7 @@ class TestStreamStateContract:
         stream_state = get_stream_state()
 
         # Start session and streaming
-        assert session_mgr.try_start_session("session-1") == True
+        assert session_mgr.try_start_session("session-1")
         stream_state.start_streaming("session-1")
 
         num_threads = 10
@@ -333,7 +333,6 @@ class TestStreamStateContract:
 
         # Record starting count (don't increment yet)
         # Since increment_frame_count returns the new count, we need to track manually
-        start_count = 0  # Assume starts at 0
 
         def increment_frames():
             for _ in range(increments_per_thread):

@@ -5,6 +5,7 @@ This changes the camera's IP instead of your computer's IP.
 """
 
 import sys
+
 from src.lib import mvsdk
 
 
@@ -48,7 +49,7 @@ def main():
         print(f"\n🔧 Changing camera IP to: {new_ip}")
         print(f"   Subnet: {subnet}")
         print(f"   Gateway: {gateway}")
-        print(f"   Persistent: True")
+        print("   Persistent: True")
 
         result = mvsdk.CameraGigeSetIp(
             dev_info,
@@ -60,8 +61,8 @@ def main():
 
         if result == 0:
             print(f"\n✅ Success! Camera IP changed to {new_ip}")
-            print(f"\nNext steps:")
-            print(f"  1. Wait 5 seconds for camera to reboot")
+            print("\nNext steps:")
+            print("  1. Wait 5 seconds for camera to reboot")
             print(f"  2. Run: python main.py --camera-ip {new_ip} --check")
             return 0
         else:
@@ -73,13 +74,13 @@ def main():
                 -14: "CAMERA_STATUS_COMM_ERROR - Communication error",
             }.get(result, f"Unknown error code: {result}")
 
-            print(f"\n❌ Failed to change camera IP")
+            print("\n❌ Failed to change camera IP")
             print(f"   Error: {error_msg}")
-            print(f"\nTroubleshooting:")
-            print(f"  • Try running with sudo: sudo $(which python) fix_camera_ip.py")
-            print(f"  • Ensure no other program is using the camera")
-            print(f"  • Check if camera supports dynamic IP configuration")
-            print(f"  • Try power-cycling the camera")
+            print("\nTroubleshooting:")
+            print("  • Try running with sudo: sudo $(which python) fix_camera_ip.py")
+            print("  • Ensure no other program is using the camera")
+            print("  • Check if camera supports dynamic IP configuration")
+            print("  • Try power-cycling the camera")
             return 1
 
     except Exception as e:

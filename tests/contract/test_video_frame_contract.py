@@ -185,7 +185,7 @@ class TestVideoFrameContract:
             sequence_number=0,
             media_type=0x02000002,
         )
-        assert color_frame.is_color == True
+        assert color_frame.is_color
 
         # Mono frame
         mono_data = np.zeros((480, 640), dtype=np.uint8)
@@ -198,7 +198,7 @@ class TestVideoFrameContract:
             sequence_number=0,
             media_type=0x01000001,
         )
-        assert mono_frame.is_color == False
+        assert not mono_frame.is_color
 
     def test_size_bytes_property(self):
         """Contract: size_bytes == data.nbytes"""

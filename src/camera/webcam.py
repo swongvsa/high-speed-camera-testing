@@ -11,7 +11,7 @@ from typing import Iterator, Optional
 import cv2
 import numpy as np
 
-from src.camera.device import CameraAccessDenied, CameraCapability, CameraException, CameraInfo
+from src.camera.device import CameraAccessDeniedError, CameraCapability, CameraError, CameraInfo
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +92,7 @@ class WebcamDevice:
             # Use a unique key for webcam devices to avoid collision with MindVision
             device_key = f"webcam_{self._camera_info.device_index}"
             if device_key in self._active_devices:
-                raise CameraAccessDenied(
+                raise CameraAccessDeniedError(
                     "Webcam already in use. Only one viewer allowed.", error_code=-1
                 )
             self._active_devices.add(device_key)
@@ -100,7 +100,7 @@ class WebcamDevice:
         try:
             self._cap = cv2.VideoCapture(self._camera_info.device_index)
             if not self._cap.isOpened():
-                raise CameraException(
+                raise CameraError(
                     f"Failed to open webcam {self._camera_info.device_index}", error_code=-1
                 )
 
@@ -115,9 +115,9 @@ class WebcamDevice:
             with self._access_lock:
                 device_key = f"webcam_{self._camera_info.device_index}"
                 self._active_devices.discard(device_key)
-            if isinstance(e, CameraException):
+            if isinstance(e, CameraError):
                 raise
-            raise CameraException(f"Webcam initialization failed: {e}", error_code=-1)
+            raise CameraError(f"Webcam initialization failed: {e}", error_code=-1)
 
     def capture_frames(self) -> Iterator[np.ndarray]:
         """

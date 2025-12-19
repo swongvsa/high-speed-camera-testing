@@ -5,6 +5,7 @@ Simple test script to capture frames from camera and diagnose timeout issues.
 
 import logging
 import time
+
 from src.camera.init import initialize_camera
 
 logging.basicConfig(

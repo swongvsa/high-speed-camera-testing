@@ -2,6 +2,7 @@
 Pytest fixtures for contract tests.
 Shared fixtures to avoid duplication and ensure consistency.
 """
+
 from unittest.mock import MagicMock
 
 import numpy as np
@@ -11,7 +12,7 @@ import pytest
 @pytest.fixture
 def mock_mvsdk(mocker):
     """Mock MVSDK module with reasonable defaults for color camera"""
-    mock_sdk = mocker.patch('src.lib.mvsdk')
+    mock_sdk = mocker.patch("src.lib.mvsdk")
 
     # Mock camera enumeration
     mock_camera_info = MagicMock()
@@ -56,7 +57,7 @@ def mock_mvsdk(mocker):
 @pytest.fixture
 def mock_mvsdk_no_camera(mocker):
     """Mock MVSDK with no cameras found"""
-    mock_sdk = mocker.patch('src.lib.mvsdk')
+    mock_sdk = mocker.patch("src.lib.mvsdk")
     mock_sdk.CameraEnumerateDevice.return_value = []
     return mock_sdk
 
@@ -70,7 +71,7 @@ def mock_mvsdk_color(mock_mvsdk):
 @pytest.fixture
 def mock_mvsdk_mono(mocker):
     """Mock MVSDK with mono camera"""
-    mock_sdk = mocker.patch('src.lib.mvsdk')
+    mock_sdk = mocker.patch("src.lib.mvsdk")
 
     mock_camera_info = MagicMock()
     mock_camera_info.device_index = 0

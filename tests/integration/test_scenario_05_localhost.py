@@ -6,6 +6,7 @@ Maps to FR-012 (localhost-only security)
 """
 
 from typing import Any, cast
+
 import pytest
 
 from src.ui.app import launch_app
@@ -20,17 +21,17 @@ def test_localhost_enforcement():
     # This would succeed if we called launch_app(cast(Any, None), server_name="127.0.0.1")
 
     # Invalid: external server_name
-    with pytest.raises(ValueError, match="localhost only"):
+    with pytest.raises(ValueError, match="Localhost only"):
         launch_app(cast(Any, None), server_name="0.0.0.0")
 
-    with pytest.raises(ValueError, match="localhost only"):
+    with pytest.raises(ValueError, match="Localhost only"):
         launch_app(cast(Any, None), server_name="192.168.1.100")
 
 
 def test_share_disabled():
     """Public sharing must be disabled"""
     # Invalid: share=True
-    with pytest.raises(ValueError, match="sharing.*not allowed"):
+    with pytest.raises(ValueError, match="No sharing"):
         launch_app(cast(Any, None), share=True)
 
 
@@ -44,4 +45,4 @@ def test_default_localhost_settings():
 
     # Check defaults
     assert sig.parameters["server_name"].default == "127.0.0.1"
-    assert sig.parameters["share"].default == False
+    assert not sig.parameters["share"].default

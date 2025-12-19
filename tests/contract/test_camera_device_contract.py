@@ -60,14 +60,14 @@ class TestCameraDeviceContract:
 
     def test_camera_cleanup_on_error(self, mock_mvsdk):
         """Contract: __exit__() called even if __enter__() fails"""
-        from src.camera.device import CameraDevice, CameraException
+        from src.camera.device import CameraDevice, CameraError
 
         cameras = CameraDevice.enumerate_cameras()
         camera = CameraDevice(cameras[0])
 
         # Simulate error during __enter__
-        with patch.object(camera, "_initialize", side_effect=CameraException("Init failed", -1)):
-            with pytest.raises(CameraException):
+        with patch.object(camera, "_initialize", side_effect=CameraError("Init failed", -1)):
+            with pytest.raises(CameraError):
                 with camera:
                     pass
 
@@ -75,8 +75,8 @@ class TestCameraDeviceContract:
             # This test verifies exception propagation works correctly
 
     def test_single_access_enforcement(self, mock_mvsdk):
-        """Contract: Second __enter__() raises CameraAccessDenied"""
-        from src.camera.device import CameraAccessDenied, CameraDevice
+        """Contract: Second __enter__() raises CameraAccessDeniedError"""
+        from src.camera.device import CameraAccessDeniedError, CameraDevice
 
         cameras = CameraDevice.enumerate_cameras()
 
@@ -85,7 +85,7 @@ class TestCameraDeviceContract:
 
         with camera1:
             # Second camera trying to access same device should fail
-            with pytest.raises(CameraAccessDenied):
+            with pytest.raises(CameraAccessDeniedError):
                 with camera2:
                     pass
 
@@ -120,7 +120,7 @@ class TestCameraDeviceContract:
 
         with CameraDevice(cameras[0]) as camera:
             cap = camera.get_capability()
-            assert cap.is_mono == False
+            assert not cap.is_mono
 
             frames = camera.capture_frames()
             frame = next(frames)
@@ -137,7 +137,7 @@ class TestCameraDeviceContract:
 
         with CameraDevice(cameras[0]) as camera:
             cap = camera.get_capability()
-            assert cap.is_mono == True
+            assert cap.is_mono
 
             frames = camera.capture_frames()
             frame = next(frames)
@@ -224,13 +224,13 @@ def mock_mvsdk(mocker):
     mock_sdk.CAMERA_STATUS_TIME_OUT = -12
 
     # Mock exceptions
-    class MockCameraException(Exception):
+    class MockCameraError(Exception):
         def __init__(self, message, error_code):
             self.message = message
             self.error_code = error_code
             super().__init__(message)
 
-    mock_sdk.CameraException = MockCameraException
+    mock_sdk.CameraError = MockCameraError
 
     return mock_sdk
 
@@ -288,13 +288,13 @@ def mock_mvsdk_mono(mocker):
     mocker.patch.object(mvsdk, "CAMERA_STATUS_TIME_OUT", -12)
 
     # Mock exceptions
-    class MockCameraException(Exception):
+    class MockCameraError(Exception):
         def __init__(self, message, error_code):
             self.message = message
             self.error_code = error_code
             super().__init__(message)
 
-    mocker.patch.object(mvsdk, "CameraException", MockCameraException)
+    mocker.patch.object(mvsdk, "CameraError", MockCameraError)
 
 
 @pytest.fixture

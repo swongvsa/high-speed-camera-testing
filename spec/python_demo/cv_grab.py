@@ -22,7 +22,7 @@ def main_loop():
 	hCamera = 0
 	try:
 		hCamera = mvsdk.CameraInit(DevInfo, -1, -1)
-	except mvsdk.CameraException as e:
+	except mvsdk.CameraError as e:
 		print("CameraInit Failed({}): {}".format(e.error_code, e.message) )
 		return
 
@@ -76,7 +76,7 @@ def main_loop():
 			frame = cv2.resize(frame, (640,480), interpolation = cv2.INTER_LINEAR)
 			cv2.imshow("Press q to end", frame)
 			
-		except mvsdk.CameraException as e:
+		except mvsdk.CameraError as e:
 			if e.error_code != mvsdk.CAMERA_STATUS_TIME_OUT:
 				print("CameraGetImageBuffer failed({}): {}".format(e.error_code, e.message) )
 
