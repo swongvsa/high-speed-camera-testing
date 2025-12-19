@@ -231,10 +231,10 @@ IOMODE_PWM_OUTPUT = 4
 
 
 # 相机操作异常信息
-class CameraException(Exception):
-	"""docstring for CameraException"""
+class CameraError(Exception):
+	"""docstring for CameraError"""
 	def __init__(self, error_code):
-		super(CameraException, self).__init__()
+		super(CameraError, self).__init__()
 		self.error_code = error_code
 		self.message = CameraGetErrorString(error_code)
 
@@ -679,7 +679,7 @@ def CameraInit(pCameraInfo, emParamLoadMode = -1, emTeam = -1):
 	err_code = _sdk.CameraInit(byref(pCameraInfo), emParamLoadMode, emTeam, byref(pCameraHandle))
 	SetLastError(err_code)
 	if err_code != 0:
-		raise CameraException(err_code)
+		raise CameraError(err_code)
 	return pCameraHandle.value
 
 def CameraInitEx(iDeviceIndex, emParamLoadMode = -1, emTeam = -1):
@@ -687,7 +687,7 @@ def CameraInitEx(iDeviceIndex, emParamLoadMode = -1, emTeam = -1):
 	err_code = _sdk.CameraInitEx(iDeviceIndex, emParamLoadMode, emTeam, byref(pCameraHandle))
 	SetLastError(err_code)
 	if err_code != 0:
-		raise CameraException(err_code)
+		raise CameraError(err_code)
 	return pCameraHandle.value
 
 def CameraInitEx2(CameraName):
@@ -695,7 +695,7 @@ def CameraInitEx2(CameraName):
 	err_code = _sdk.CameraInitEx2(_str_to_string_buffer(CameraName), byref(pCameraHandle))
 	SetLastError(err_code)
 	if err_code != 0:
-		raise CameraException(err_code)
+		raise CameraError(err_code)
 	return pCameraHandle.value
 
 def CameraSetCallbackFunction(hCamera, pCallBack, pContext = 0):
@@ -757,7 +757,7 @@ def CameraGetImageBuffer(hCamera, wTimes):
 	err_code = _sdk.CameraGetImageBuffer(hCamera, byref(pFrameInfo), byref(pbyBuffer), wTimes)
 	SetLastError(err_code)
 	if err_code != 0:
-		raise CameraException(err_code)
+		raise CameraError(err_code)
 	return (pbyBuffer.value, pFrameInfo)
 
 def CameraGetImageBufferEx(hCamera, wTimes):
@@ -770,7 +770,7 @@ def CameraGetImageBufferEx(hCamera, wTimes):
 	if pFrameBuffer:
 		return (pFrameBuffer, piWidth.value, piHeight.value)
 	else:
-		raise CameraException(err_code)
+		raise CameraError(err_code)
 
 def CameraSnapToBuffer(hCamera, wTimes):
 	pbyBuffer = c_void_p()
@@ -778,7 +778,7 @@ def CameraSnapToBuffer(hCamera, wTimes):
 	err_code = _sdk.CameraSnapToBuffer(hCamera, byref(pFrameInfo), byref(pbyBuffer), wTimes)
 	SetLastError(err_code)
 	if err_code != 0:
-		raise CameraException(err_code)
+		raise CameraError(err_code)
 	return (pbyBuffer.value, pFrameInfo)
 
 def CameraReleaseImageBuffer(hCamera, pbyBuffer):
@@ -1761,7 +1761,7 @@ def CameraGetImageBufferEx2(hCamera, pImageData, uOutFormat, wTimes):
 	err_code = _sdk.CameraGetImageBufferEx2(hCamera, c_void_p(pImageData), uOutFormat, byref(piWidth), byref(piHeight), wTimes)
 	SetLastError(err_code)
 	if err_code != 0:
-		raise CameraException(err_code)
+		raise CameraError(err_code)
 	return (piWidth.value, piHeight.value)
 
 def CameraGetImageBufferEx3(hCamera, pImageData, uOutFormat, wTimes):
@@ -1771,7 +1771,7 @@ def CameraGetImageBufferEx3(hCamera, pImageData, uOutFormat, wTimes):
 	err_code = _sdk.CameraGetImageBufferEx3(hCamera, c_void_p(pImageData), uOutFormat, byref(piWidth), byref(piHeight), byref(puTimeStamp), wTimes)
 	SetLastError(err_code)
 	if err_code != 0:
-		raise CameraException(err_code)
+		raise CameraError(err_code)
 	return (piWidth.value, piHeight.value, puTimeStamp.value)
 
 def CameraGetCapabilityEx2(hCamera):
@@ -2105,7 +2105,7 @@ def CameraGetImageBufferPriority(hCamera, wTimes, Priority):
 	err_code = _sdk.CameraGetImageBufferPriority(hCamera, byref(pFrameInfo), byref(pbyBuffer), wTimes, Priority)
 	SetLastError(err_code)
 	if err_code != 0:
-		raise CameraException(err_code)
+		raise CameraError(err_code)
 	return (pbyBuffer.value, pFrameInfo)
 
 def CameraGetImageBufferPriorityEx(hCamera, wTimes, Priority):
@@ -2118,7 +2118,7 @@ def CameraGetImageBufferPriorityEx(hCamera, wTimes, Priority):
 	if pFrameBuffer:
 		return (pFrameBuffer, piWidth.value, piHeight.value)
 	else:
-		raise CameraException(err_code)
+		raise CameraError(err_code)
 
 def CameraGetImageBufferPriorityEx2(hCamera, pImageData, uOutFormat, wTimes, Priority):
 	piWidth = c_int()
@@ -2126,7 +2126,7 @@ def CameraGetImageBufferPriorityEx2(hCamera, pImageData, uOutFormat, wTimes, Pri
 	err_code = _sdk.CameraGetImageBufferPriorityEx2(hCamera, c_void_p(pImageData), uOutFormat, byref(piWidth), byref(piHeight), wTimes, Priority)
 	SetLastError(err_code)
 	if err_code != 0:
-		raise CameraException(err_code)
+		raise CameraError(err_code)
 	return (piWidth.value, piHeight.value)
 
 def CameraGetImageBufferPriorityEx3(hCamera, pImageData, uOutFormat, wTimes, Priority):
@@ -2136,7 +2136,7 @@ def CameraGetImageBufferPriorityEx3(hCamera, pImageData, uOutFormat, wTimes, Pri
 	err_code = _sdk.CameraGetImageBufferPriorityEx3(hCamera, c_void_p(pImageData), uOutFormat, byref(piWidth), byref(piHeight), byref(puTimeStamp), wTimes, Priority)
 	SetLastError(err_code)
 	if err_code != 0:
-		raise CameraException(err_code)
+		raise CameraError(err_code)
 	return (piWidth.value, piHeight.value, puTimeStamp.value)
 
 def CameraClearBuffer(hCamera):
@@ -2286,7 +2286,7 @@ def CameraGrabber_CreateFromDevicePage():
 	err_code = _sdk.CameraGrabber_CreateFromDevicePage(byref(Grabber))
 	SetLastError(err_code)
 	if err_code != 0:
-		raise CameraException(err_code)
+		raise CameraError(err_code)
 	return Grabber.value
 
 def CameraGrabber_CreateByIndex(Index):
@@ -2294,7 +2294,7 @@ def CameraGrabber_CreateByIndex(Index):
 	err_code = _sdk.CameraGrabber_CreateByIndex(byref(Grabber), Index)
 	SetLastError(err_code)
 	if err_code != 0:
-		raise CameraException(err_code)
+		raise CameraError(err_code)
 	return Grabber.value
 
 def CameraGrabber_CreateByName(Name):
@@ -2302,7 +2302,7 @@ def CameraGrabber_CreateByName(Name):
 	err_code = _sdk.CameraGrabber_CreateByName(byref(Grabber), _str_to_string_buffer(Name))
 	SetLastError(err_code)
 	if err_code != 0:
-		raise CameraException(err_code)
+		raise CameraError(err_code)
 	return Grabber.value
 
 def CameraGrabber_Create(pDevInfo):
@@ -2310,7 +2310,7 @@ def CameraGrabber_Create(pDevInfo):
 	err_code = _sdk.CameraGrabber_Create(byref(Grabber), byref(pDevInfo))
 	SetLastError(err_code)
 	if err_code != 0:
-		raise CameraException(err_code)
+		raise CameraError(err_code)
 	return Grabber.value
 
 def CameraGrabber_Destroy(Grabber):
@@ -2343,7 +2343,7 @@ def CameraGrabber_SaveImage(Grabber, TimeOut):
 	err_code = _sdk.CameraGrabber_SaveImage(c_void_p(Grabber), byref(Image), TimeOut)
 	SetLastError(err_code)
 	if err_code != 0:
-		raise CameraException(err_code)
+		raise CameraError(err_code)
 	return Image.value
 
 def CameraGrabber_SaveImageAsync(Grabber):

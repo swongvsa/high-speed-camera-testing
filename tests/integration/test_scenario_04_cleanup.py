@@ -38,13 +38,13 @@ def test_camera_cleanup_on_disconnect():
 
         # Verify camera is initialized
         assert camera._handle is not None
-        assert camera._initialized == True
+        assert camera._initialized
 
         # Cleanup
         camera.__exit__(None, None, None)
 
         # Verify cleanup
-        assert camera._initialized == False
+        assert not camera._initialized
         assert camera._handle is None
         assert camera._frame_buffer is None
 

@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 
 from src.camera.capture import create_frame_generator
-from src.camera.device import CameraDevice, CameraException
+from src.camera.device import CameraDevice, CameraError
 from src.lib import mvsdk
 
 
@@ -40,7 +40,7 @@ def test_frame_generator_handles_timeout(mock_camera):
     # Setup: Camera raises timeout exception
     def frame_gen_with_timeout():
         yield np.zeros((480, 640, 3), dtype=np.uint8)
-        raise CameraException("Timeout", mvsdk.CAMERA_STATUS_TIME_OUT)
+        raise CameraError("Timeout", mvsdk.CAMERA_STATUS_TIME_OUT)
 
     mock_camera.capture_frames.return_value = frame_gen_with_timeout()
 
@@ -62,14 +62,14 @@ def test_frame_generator_propagates_fatal_errors(mock_camera):
     # Setup: Camera raises fatal error
     def frame_gen_with_error():
         yield np.zeros((480, 640, 3), dtype=np.uint8)
-        raise CameraException("Fatal error", mvsdk.CAMERA_STATUS_DEVICE_LOST)
+        raise CameraError("Fatal error", mvsdk.CAMERA_STATUS_DEVICE_LOST)
 
     mock_camera.capture_frames.return_value = frame_gen_with_error()
 
     # Action & Assert: Fatal error propagates
     gen = create_frame_generator(mock_camera)
     next(gen)  # First frame OK
-    with pytest.raises(CameraException) as exc_info:
+    with pytest.raises(CameraError) as exc_info:
         next(gen)  # Second frame raises
 
     assert exc_info.value.error_code == mvsdk.CAMERA_STATUS_DEVICE_LOST

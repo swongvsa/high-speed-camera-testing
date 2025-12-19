@@ -333,11 +333,11 @@ IOMODE_PWM_OUTPUT = 4
 
 
 # 相机操作异常信息
-class CameraException(Exception):
-    """docstring for CameraException"""
+class CameraError(Exception):
+    """Camera operation failed"""
 
-    def __init__(self, error_code):
-        super(CameraException, self).__init__()
+    def __init__(self, message: str, error_code: int):
+        super().__init__(message)
         self.error_code = error_code
         self.message = CameraGetErrorString(error_code)
 
@@ -701,7 +701,7 @@ class tSdkCameraCapbility(MvStructure):
 
 
 # 图像帧头信息
-class tSdkFrameHead(MvStructure):
+class tSdkframe_head(MvStructure):
     _fields_ = [
         ("uiMediaType", c_uint),  # 图像格式,Image Format
         ("uBytes", c_uint),  # 图像数据字节数,Total bytes
@@ -783,7 +783,7 @@ class method(object):
 
 
 # 图像捕获的回调函数定义
-CAMERA_SNAP_PROC = CALLBACK_FUNC_TYPE(None, c_int, c_void_p, POINTER(tSdkFrameHead), c_void_p)
+CAMERA_SNAP_PROC = CALLBACK_FUNC_TYPE(None, c_int, c_void_p, POINTER(tSdkframe_head), c_void_p)
 
 # 相机连接状态回调
 CAMERA_CONNECTION_STATUS_CALLBACK = CALLBACK_FUNC_TYPE(None, c_int, c_uint, c_uint, c_void_p)
@@ -796,12 +796,12 @@ pfnCameraGrabberSaveImageComplete = CALLBACK_FUNC_TYPE(None, c_void_p, c_void_p,
 
 # 帧监听回调
 pfnCameraGrabberFrameListener = CALLBACK_FUNC_TYPE(
-    c_int, c_void_p, c_int, c_void_p, POINTER(tSdkFrameHead), c_void_p
+    c_int, c_void_p, c_int, c_void_p, POINTER(tSdkframe_head), c_void_p
 )
 
 # 采集器图像捕获的回调
 pfnCameraGrabberFrameCallback = CALLBACK_FUNC_TYPE(
-    None, c_void_p, c_void_p, POINTER(tSdkFrameHead), c_void_p
+    None, c_void_p, c_void_p, POINTER(tSdkframe_head), c_void_p
 )
 
 # -----------------------------------函数接口------------------------------------------
@@ -891,7 +891,7 @@ def CameraInit(pCameraInfo, emParamLoadMode=-1, emTeam=-1):
     err_code = _sdk.CameraInit(byref(pCameraInfo), emParamLoadMode, emTeam, byref(pCameraHandle))
     SetLastError(err_code)
     if err_code != 0:
-        raise CameraException(err_code)
+        raise CameraError(err_code)
     return pCameraHandle.value
 
 
@@ -900,7 +900,7 @@ def CameraInitEx(iDeviceIndex, emParamLoadMode=-1, emTeam=-1):
     err_code = _sdk.CameraInitEx(iDeviceIndex, emParamLoadMode, emTeam, byref(pCameraHandle))
     SetLastError(err_code)
     if err_code != 0:
-        raise CameraException(err_code)
+        raise CameraError(err_code)
     return pCameraHandle.value
 
 
@@ -909,7 +909,7 @@ def CameraInitEx2(CameraName):
     err_code = _sdk.CameraInitEx2(_str_to_string_buffer(CameraName), byref(pCameraHandle))
     SetLastError(err_code)
     if err_code != 0:
-        raise CameraException(err_code)
+        raise CameraError(err_code)
     return pCameraHandle.value
 
 
@@ -980,11 +980,11 @@ def CameraSetDisplaySize(hCamera, iWidth, iHeight):
 
 def CameraGetImageBuffer(hCamera, wTimes):
     pbyBuffer = c_void_p()
-    pFrameInfo = tSdkFrameHead()
+    pFrameInfo = tSdkframe_head()
     err_code = _sdk.CameraGetImageBuffer(hCamera, byref(pFrameInfo), byref(pbyBuffer), wTimes)
     SetLastError(err_code)
     if err_code != 0:
-        raise CameraException(err_code)
+        raise CameraError(err_code)
     return (pbyBuffer.value, pFrameInfo)
 
 
@@ -998,16 +998,16 @@ def CameraGetImageBufferEx(hCamera, wTimes):
     if pFrameBuffer:
         return (pFrameBuffer, piWidth.value, piHeight.value)
     else:
-        raise CameraException(err_code)
+        raise CameraError(err_code)
 
 
 def CameraSnapToBuffer(hCamera, wTimes):
     pbyBuffer = c_void_p()
-    pFrameInfo = tSdkFrameHead()
+    pFrameInfo = tSdkframe_head()
     err_code = _sdk.CameraSnapToBuffer(hCamera, byref(pFrameInfo), byref(pbyBuffer), wTimes)
     SetLastError(err_code)
     if err_code != 0:
-        raise CameraException(err_code)
+        raise CameraError(err_code)
     return (pbyBuffer.value, pFrameInfo)
 
 
@@ -2228,7 +2228,7 @@ def CameraGetImageBufferEx2(hCamera, pImageData, uOutFormat, wTimes):
     )
     SetLastError(err_code)
     if err_code != 0:
-        raise CameraException(err_code)
+        raise CameraError(err_code)
     return (piWidth.value, piHeight.value)
 
 
@@ -2247,7 +2247,7 @@ def CameraGetImageBufferEx3(hCamera, pImageData, uOutFormat, wTimes):
     )
     SetLastError(err_code)
     if err_code != 0:
-        raise CameraException(err_code)
+        raise CameraError(err_code)
     return (piWidth.value, piHeight.value, puTimeStamp.value)
 
 
@@ -2610,7 +2610,7 @@ def CameraGetDenoise3DParams(hCamera):
     return (bEnable, nCount, bUseWeight, Weights)
 
 
-def CameraManualDenoise3D(InFramesHead, InFramesData, nCount, Weights, OutFrameHead, OutFrameData):
+def CameraManualDenoise3D(InFramesHead, InFramesData, nCount, Weights, Outframe_head, OutFrameData):
     assert nCount > 0
     assert len(InFramesData) == nCount
     assert Weights is None or len(Weights) == nCount
@@ -2621,7 +2621,7 @@ def CameraManualDenoise3D(InFramesHead, InFramesData, nCount, Weights, OutFrameH
         InFramesDataNative,
         nCount,
         WeightsNative,
-        byref(OutFrameHead),
+        byref(Outframe_head),
         c_void_p(OutFrameData),
     )
     SetLastError(err_code)
@@ -2695,14 +2695,14 @@ def CameraLoadDeadPixelsFromFile(hCamera, sFileName):
 
 
 def CameraGetImageBufferPriority(hCamera, wTimes, Priority):
-    pFrameInfo = tSdkFrameHead()
+    pFrameInfo = tSdkframe_head()
     pbyBuffer = c_void_p()
     err_code = _sdk.CameraGetImageBufferPriority(
         hCamera, byref(pFrameInfo), byref(pbyBuffer), wTimes, Priority
     )
     SetLastError(err_code)
     if err_code != 0:
-        raise CameraException(err_code)
+        raise CameraError(err_code)
     return (pbyBuffer.value, pFrameInfo)
 
 
@@ -2718,7 +2718,7 @@ def CameraGetImageBufferPriorityEx(hCamera, wTimes, Priority):
     if pFrameBuffer:
         return (pFrameBuffer, piWidth.value, piHeight.value)
     else:
-        raise CameraException(err_code)
+        raise CameraError(err_code)
 
 
 def CameraGetImageBufferPriorityEx2(hCamera, pImageData, uOutFormat, wTimes, Priority):
@@ -2729,7 +2729,7 @@ def CameraGetImageBufferPriorityEx2(hCamera, pImageData, uOutFormat, wTimes, Pri
     )
     SetLastError(err_code)
     if err_code != 0:
-        raise CameraException(err_code)
+        raise CameraError(err_code)
     return (piWidth.value, piHeight.value)
 
 
@@ -2749,7 +2749,7 @@ def CameraGetImageBufferPriorityEx3(hCamera, pImageData, uOutFormat, wTimes, Pri
     )
     SetLastError(err_code)
     if err_code != 0:
-        raise CameraException(err_code)
+        raise CameraError(err_code)
     return (piWidth.value, piHeight.value, puTimeStamp.value)
 
 
@@ -2807,31 +2807,31 @@ def CameraGetHDRGainMode(hCamera):
     return value.value
 
 
-def CameraCreateDIBitmap(hDC, pFrameBuffer, pFrameHead):
+def CameraCreateDIBitmap(hDC, pFrameBuffer, pframe_head):
     outBitmap = c_void_p()
     err_code = _sdk.CameraCreateDIBitmap(
-        hDC, c_void_p(pFrameBuffer), byref(pFrameHead), byref(outBitmap)
+        hDC, c_void_p(pFrameBuffer), byref(pframe_head), byref(outBitmap)
     )
     SetLastError(err_code)
     return outBitmap.value
 
 
-def CameraDrawFrameBuffer(pFrameBuffer, pFrameHead, hWnd, Algorithm, Mode):
+def CameraDrawFrameBuffer(pFrameBuffer, pframe_head, hWnd, Algorithm, Mode):
     err_code = _sdk.CameraDrawFrameBuffer(
-        c_void_p(pFrameBuffer), byref(pFrameHead), c_void_p(hWnd), Algorithm, Mode
+        c_void_p(pFrameBuffer), byref(pframe_head), c_void_p(hWnd), Algorithm, Mode
     )
     SetLastError(err_code)
     return err_code
 
 
-def CameraFlipFrameBuffer(pFrameBuffer, pFrameHead, Flags):
-    err_code = _sdk.CameraFlipFrameBuffer(c_void_p(pFrameBuffer), byref(pFrameHead), Flags)
+def CameraFlipFrameBuffer(pFrameBuffer, pframe_head, Flags):
+    err_code = _sdk.CameraFlipFrameBuffer(c_void_p(pFrameBuffer), byref(pframe_head), Flags)
     SetLastError(err_code)
     return err_code
 
 
 def CameraConvertFrameBufferFormat(
-    hCamera, pInFrameBuffer, pOutFrameBuffer, outWidth, outHeight, outMediaType, pFrameHead
+    hCamera, pInFrameBuffer, pOutFrameBuffer, outWidth, outHeight, outMediaType, pframe_head
 ):
     err_code = _sdk.CameraConvertFrameBufferFormat(
         hCamera,
@@ -2840,7 +2840,7 @@ def CameraConvertFrameBufferFormat(
         outWidth,
         outHeight,
         outMediaType,
-        byref(pFrameHead),
+        byref(pframe_head),
     )
     SetLastError(err_code)
     return err_code
@@ -2954,7 +2954,7 @@ def CameraGrabber_CreateFromDevicePage():
     err_code = _sdk.CameraGrabber_CreateFromDevicePage(byref(Grabber))
     SetLastError(err_code)
     if err_code != 0:
-        raise CameraException(err_code)
+        raise CameraError(err_code)
     return Grabber.value
 
 
@@ -2963,7 +2963,7 @@ def CameraGrabber_CreateByIndex(Index):
     err_code = _sdk.CameraGrabber_CreateByIndex(byref(Grabber), Index)
     SetLastError(err_code)
     if err_code != 0:
-        raise CameraException(err_code)
+        raise CameraError(err_code)
     return Grabber.value
 
 
@@ -2972,7 +2972,7 @@ def CameraGrabber_CreateByName(Name):
     err_code = _sdk.CameraGrabber_CreateByName(byref(Grabber), _str_to_string_buffer(Name))
     SetLastError(err_code)
     if err_code != 0:
-        raise CameraException(err_code)
+        raise CameraError(err_code)
     return Grabber.value
 
 
@@ -2981,7 +2981,7 @@ def CameraGrabber_Create(pDevInfo):
     err_code = _sdk.CameraGrabber_Create(byref(Grabber), byref(pDevInfo))
     SetLastError(err_code)
     if err_code != 0:
-        raise CameraException(err_code)
+        raise CameraError(err_code)
     return Grabber.value
 
 
@@ -3020,7 +3020,7 @@ def CameraGrabber_SaveImage(Grabber, TimeOut):
     err_code = _sdk.CameraGrabber_SaveImage(c_void_p(Grabber), byref(Image), TimeOut)
     SetLastError(err_code)
     if err_code != 0:
-        raise CameraException(err_code)
+        raise CameraError(err_code)
     return Image.value
 
 
@@ -3086,10 +3086,10 @@ def CameraGrabber_GetCameraDevInfo(Grabber):
 # CameraImage
 
 
-def CameraImage_Create(pFrameBuffer, pFrameHead, bCopy):
+def CameraImage_Create(pFrameBuffer, pframe_head, bCopy):
     Image = c_void_p()
     err_code = _sdk.CameraImage_Create(
-        byref(Image), c_void_p(pFrameBuffer), byref(pFrameHead), bCopy
+        byref(Image), c_void_p(pFrameBuffer), byref(pframe_head), bCopy
     )
     SetLastError(err_code)
     return Image.value
@@ -3114,7 +3114,7 @@ def CameraImage_GetData(Image):
     err_code = _sdk.CameraImage_GetData(c_void_p(Image), byref(DataBuffer), byref(HeadPtr))
     SetLastError(err_code)
     if err_code == 0:
-        return (DataBuffer.value, tSdkFrameHead.from_address(HeadPtr.value))
+        return (DataBuffer.value, tSdkframe_head.from_address(HeadPtr.value))
     else:
         return (0, None)
 

@@ -30,7 +30,9 @@ class TestGradioAppLaunchContract:
         invalid_hosts = ["0.0.0.0", "192.168.1.1", "example.com", "*", ""]
 
         for invalid_host in invalid_hosts:
-            with pytest.raises(ValueError, match=f"Server must be localhost only, got: {invalid_host}"):
+            with pytest.raises(
+                ValueError, match=f"Server must be localhost only, got: {invalid_host}"
+            ):
                 mock_app.launch(server_name=invalid_host)
 
         # Valid localhost should not raise
@@ -90,7 +92,7 @@ class TestGradioInterfaceContract:
             return mock_interface
 
         # Act
-        result = create_interface_impl(frame_generator, on_session_start, on_session_end)
+        create_interface_impl(frame_generator, on_session_start, on_session_end)
 
         # Assert - Load callback should be registered
         assert registered_load_fn is not None, "Interface must register load callback"
@@ -102,36 +104,37 @@ class TestGradioInterfaceContract:
     def test_interface_continuous_update(self, mocker):
         """Contract: Frames update without user refresh (FR-006)"""
         # Arrange
-        mock_interface = MagicMock()
+        MagicMock()
 
         # Create a frame generator that yields multiple frames
         def frame_gen():
             for i in range(5):
                 yield np.ones((480, 640, 3), dtype=np.uint8) * i
 
-        frame_generator = Mock(return_value=frame_gen())
+        Mock(return_value=frame_gen())
 
         # Track streaming configuration
         stream_config = {}
 
         def mock_image_component(*args, **kwargs):
             mock_img = MagicMock()
-            if 'streaming' in kwargs:
-                stream_config['streaming'] = kwargs['streaming']
-            if 'every' in kwargs:
-                stream_config['update_interval'] = kwargs['every']
+            if "streaming" in kwargs:
+                stream_config["streaming"] = kwargs["streaming"]
+            if "every" in kwargs:
+                stream_config["update_interval"] = kwargs["every"]
             return mock_img
 
-        mocker.patch('gradio.Image', side_effect=mock_image_component)
+        mocker.patch("gradio.Image", side_effect=mock_image_component)
 
         # Act - Simulate interface creation with streaming image
         import gradio as gr
-        mock_img = gr.Image(streaming=True, every=0.033)  # ~30 FPS
+
+        gr.Image(streaming=True, every=0.033)  # ~30 FPS
 
         # Assert - Interface must support continuous streaming
-        assert stream_config.get('streaming') is True, "Image component must enable streaming"
-        assert stream_config.get('update_interval') is not None, "Must set update interval"
-        assert stream_config['update_interval'] <= 0.1, "Update interval should be fast (<100ms)"
+        assert stream_config.get("streaming") is True, "Image component must enable streaming"
+        assert stream_config.get("update_interval") is not None, "Must set update interval"
+        assert stream_config["update_interval"] <= 0.1, "Update interval should be fast (<100ms)"
 
     def test_session_start_callback(self):
         """Contract: on_session_start called when user connects"""
@@ -154,13 +157,14 @@ class TestGradioInterfaceContract:
             # Register load event to trigger session start
             def load_handler():
                 on_start(session_id)
+
             mock_interface.load(fn=load_handler)
             return mock_interface
 
         frame_generator = Mock(return_value=iter([]))
 
         # Act
-        interface = create_interface_impl(frame_generator, on_session_start, on_session_end)
+        create_interface_impl(frame_generator, on_session_start, on_session_end)
 
         # Simulate user connecting (load event fires)
         assert load_callback is not None, "Load callback must be registered"
@@ -192,13 +196,14 @@ class TestGradioInterfaceContract:
             # Register unload event to trigger session end
             def unload_handler():
                 on_end(session_id)
+
             mock_interface.unload(fn=unload_handler)
             return mock_interface
 
         frame_generator = Mock(return_value=iter([]))
 
         # Act
-        interface = create_interface_impl(frame_generator, on_session_start, on_session_end)
+        create_interface_impl(frame_generator, on_session_start, on_session_end)
 
         # Simulate user closing browser (unload event fires)
         assert unload_callback is not None, "Unload callback must be registered"
@@ -224,8 +229,9 @@ class TestErrorDisplayContract:
             assert "Traceback" not in message, "Must not show stack traces"
             assert "Exception" not in message, "Must not show exception types"
             # Contract: User can understand and act on message
-            assert any(word in message.lower() for word in ["camera", "connect", "detected"]), \
+            assert any(word in message.lower() for word in ["camera", "connect", "detected"]), (
                 "Message must mention camera and action"
+            )
 
         mock_error_display.display_error = display_error_impl
 
@@ -246,8 +252,9 @@ class TestErrorDisplayContract:
             assert len(message) > 0, "Message must not be empty"
             assert "Traceback" not in message, "Must not show stack traces"
             # Contract: User understands single viewer limitation
-            assert any(word in message.lower() for word in ["use", "viewer", "one"]), \
+            assert any(word in message.lower() for word in ["use", "viewer", "one"]), (
                 "Message must explain single viewer constraint"
+            )
 
         mock_error_display.display_error = display_error_impl
 
@@ -265,8 +272,9 @@ class TestErrorDisplayContract:
         def display_error_impl(message: str, error_type: str = "error"):
             # Contract: User can understand and act on message
             assert len(message) > 0, "Message must not be empty"
-            assert any(word in message.lower() for word in ["connection", "lost", "refresh", "reconnect"]), \
-                "Message must explain issue and recovery action"
+            assert any(
+                word in message.lower() for word in ["connection", "lost", "refresh", "reconnect"]
+            ), "Message must explain issue and recovery action"
 
         mock_error_display.display_error = display_error_impl
 
@@ -336,8 +344,9 @@ class TestBrowserCompatibilityContract:
 
         # Contract: Interface must support modern browsers
         # Implementation should use web standards compatible with these versions
-        assert all(version > 0 for version in supported_browsers.values()), \
+        assert all(version > 0 for version in supported_browsers.values()), (
             "Browser version requirements must be specified"
+        )
 
         # Contract: No browser-specific hacks required
         # Gradio uses standard WebSocket, JavaScript ES6+, HTML5 video
@@ -383,7 +392,7 @@ class TestInterfaceCreationContract:
             return mock_interface
 
         # Act
-        interface = create_interface_impl(frame_generator, on_session_start, on_session_end)
+        create_interface_impl(frame_generator, on_session_start, on_session_end)
 
         # Assert - Both lifecycle events must be bound
         assert load_registered, "Interface must register load event handler"
@@ -405,8 +414,8 @@ class TestInterfaceCreationContract:
 
         # Assert - Must return interface object with required methods
         assert result is not None, "Must return interface object"
-        assert hasattr(result, 'load'), "Interface must have load method"
-        assert hasattr(result, 'unload'), "Interface must have unload method"
+        assert hasattr(result, "load"), "Interface must have load method"
+        assert hasattr(result, "unload"), "Interface must have unload method"
 
 
 class TestFrameGeneratorContract:
@@ -414,6 +423,7 @@ class TestFrameGeneratorContract:
 
     def test_frame_generator_yields_numpy_arrays(self):
         """Contract: frame_generator must yield numpy arrays"""
+
         # Arrange
         def frame_gen():
             for i in range(3):
@@ -431,18 +441,20 @@ class TestFrameGeneratorContract:
 
     def test_frame_generator_callable_returns_iterator(self):
         """Contract: frame_generator callable must return iterator"""
+
         # Arrange
         def frame_gen_factory():
             def inner_gen():
                 yield np.zeros((480, 640, 3), dtype=np.uint8)
+
             return inner_gen()
 
         # Act
         result = frame_gen_factory()
 
         # Assert - Must return iterator
-        assert hasattr(result, '__iter__'), "Must return iterator"
-        assert hasattr(result, '__next__'), "Must be an iterator (not just iterable)"
+        assert hasattr(result, "__iter__"), "Must return iterator"
+        assert hasattr(result, "__next__"), "Must be an iterator (not just iterable)"
 
         # Can consume frames
         frame = next(result)

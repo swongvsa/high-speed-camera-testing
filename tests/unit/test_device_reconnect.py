@@ -36,12 +36,12 @@ def mock_mvsdk_for_reconnect(mocker):
     mock_sdk.CAMERA_MEDIA_TYPE_MONO8 = 0x01000001
 
     # Mock exceptions
-    class MockCameraException(Exception):
+    class MockCameraError(Exception):
         def __init__(self, message="", error_code=0):
             self.error_code = error_code
             super().__init__(message)
 
-    mock_sdk.CameraException = MockCameraException
+    mock_sdk.CameraError = MockCameraError
 
     return mock_sdk
 
@@ -76,8 +76,8 @@ class TestReconnectMethod:
             camera._initialized = False
 
             # Make initialization fail
-            mock_mvsdk_for_reconnect.CameraInit.side_effect = (
-                mock_mvsdk_for_reconnect.CameraException("Init failed", -1)
+            mock_mvsdk_for_reconnect.CameraInit.side_effect = mock_mvsdk_for_reconnect.CameraError(
+                "Init failed", -1
             )
 
             result = camera._attempt_reconnect()
@@ -91,9 +91,6 @@ class TestReconnectMethod:
         camera = CameraDevice(cameras[0])
 
         with camera:
-            old_handle = camera._handle
-            old_buffer = camera._frame_buffer
-
             # Force reconnect
             camera._initialized = False
             camera._attempt_reconnect()
@@ -127,7 +124,7 @@ class TestTimeoutTriggeredReconnect:
 
         # Set up timeout exception
         mock_mvsdk_for_reconnect.CameraGetImageBuffer.side_effect = (
-            mock_mvsdk_for_reconnect.CameraException("Timeout", -12)
+            mock_mvsdk_for_reconnect.CameraError("Timeout", -12)
         )
 
         with camera:
@@ -139,9 +136,7 @@ class TestTimeoutTriggeredReconnect:
             assert result is None
             assert camera._timeout_count > initial_count
 
-    def test_reconnect_triggered_after_consecutive_timeouts(
-        self, mock_mvsdk_for_reconnect, mocker
-    ):
+    def test_reconnect_triggered_after_consecutive_timeouts(self, mock_mvsdk_for_reconnect, mocker):
         """Reconnect is attempted after N consecutive timeouts."""
         cameras = CameraDevice.enumerate_cameras()
         camera = CameraDevice(cameras[0])
@@ -153,7 +148,7 @@ class TestTimeoutTriggeredReconnect:
 
         # Set up continuous timeouts
         mock_mvsdk_for_reconnect.CameraGetImageBuffer.side_effect = (
-            mock_mvsdk_for_reconnect.CameraException("Timeout", -12)
+            mock_mvsdk_for_reconnect.CameraError("Timeout", -12)
         )
 
         with camera:
@@ -164,9 +159,7 @@ class TestTimeoutTriggeredReconnect:
             # Reconnect should have been attempted
             assert reconnect_spy.call_count >= 1
 
-    def test_timeout_count_resets_on_successful_reconnect(
-        self, mock_mvsdk_for_reconnect, mocker
-    ):
+    def test_timeout_count_resets_on_successful_reconnect(self, mock_mvsdk_for_reconnect, mocker):
         """Timeout counter resets after successful reconnect."""
         cameras = CameraDevice.enumerate_cameras()
         camera = CameraDevice(cameras[0])
@@ -182,7 +175,7 @@ class TestTimeoutTriggeredReconnect:
 
             # Trigger reconnect via get_frame timeout handling
             mock_mvsdk_for_reconnect.CameraGetImageBuffer.side_effect = (
-                mock_mvsdk_for_reconnect.CameraException("Timeout", -12)
+                mock_mvsdk_for_reconnect.CameraError("Timeout", -12)
             )
             camera.get_frame()
 
@@ -249,9 +242,7 @@ class TestReconnectInGetFrameLocked:
 class TestCaptureFramesReconnect:
     """Tests for reconnection in capture_frames() generator."""
 
-    def test_capture_frames_triggers_reconnect_logic(
-        self, mock_mvsdk_for_reconnect, mocker
-    ):
+    def test_capture_frames_triggers_reconnect_logic(self, mock_mvsdk_for_reconnect, mocker):
         """capture_frames triggers reconnect after consecutive timeout threshold."""
         cameras = CameraDevice.enumerate_cameras()
         camera = CameraDevice(cameras[0])
@@ -260,7 +251,7 @@ class TestCaptureFramesReconnect:
 
         # Set up timeouts, but make reconnect fail to break the loop
         mock_mvsdk_for_reconnect.CameraGetImageBuffer.side_effect = (
-            mock_mvsdk_for_reconnect.CameraException("Timeout", -12)
+            mock_mvsdk_for_reconnect.CameraError("Timeout", -12)
         )
 
         # Make reconnect "fail" by making CameraInit raise exception
@@ -273,7 +264,7 @@ class TestCaptureFramesReconnect:
             call_count[0] += 1
             if call_count[0] == 1:
                 return original_init  # First init succeeds
-            raise mock_mvsdk_for_reconnect.CameraException("Reconnect failed", -1)
+            raise mock_mvsdk_for_reconnect.CameraError("Reconnect failed", -1)
 
         mock_mvsdk_for_reconnect.CameraInit.side_effect = camera_init_side_effect
 
@@ -283,7 +274,7 @@ class TestCaptureFramesReconnect:
             gen = camera.capture_frames()
 
             # Iterate until generator exits (reconnect fails, _initialized=False)
-            frames = list(gen)
+            list(gen)
 
             # Reconnect should have been attempted
             assert reconnect_spy.call_count >= 1

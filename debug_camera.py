@@ -8,8 +8,7 @@ import logging
 import sys
 
 logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -18,6 +17,7 @@ def test_mvsdk_import():
     """Test if MVSDK module can be imported."""
     try:
         from src.lib import mvsdk
+
         logger.info("✅ MVSDK module imported successfully")
         logger.info(f"   MVSDK location: {mvsdk.__file__}")
         return mvsdk
@@ -50,9 +50,9 @@ def test_camera_enumeration(mvsdk):
 
     except Exception as e:
         logger.error(f"❌ Camera enumeration failed: {e}")
-        if hasattr(mvsdk, 'CameraGetErrorString'):
+        if hasattr(mvsdk, "CameraGetErrorString"):
             try:
-                error_code = getattr(e, 'error_code', None)
+                error_code = getattr(e, "error_code", None)
                 if error_code is not None:
                     error_str = mvsdk.CameraGetErrorString(error_code)
                     logger.error(f"   Error code {error_code}: {error_str}")
@@ -69,7 +69,7 @@ def test_camera_init():
         from src.camera.init import initialize_camera
 
         # Use environment variable if set
-        camera_ip = os.environ.get('CAMERA_IP', '169.254.170.200')
+        camera_ip = os.environ.get("CAMERA_IP", "169.254.170.200")
         logger.info(f"🎬 Testing camera initialization with IP: {camera_ip}")
 
         camera, error = initialize_camera(camera_ip)
@@ -97,6 +97,7 @@ def test_camera_init():
     except Exception as e:
         logger.error(f"❌ Unexpected error during camera init test: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 

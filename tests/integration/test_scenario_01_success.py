@@ -113,7 +113,7 @@ def test_camera_feed_color_and_mono_support():
         camera.__enter__()
         cap = camera.get_capability()
 
-        assert cap.is_mono == False, "Should detect color camera"
+        assert not cap.is_mono, "Should detect color camera"
         camera.__exit__(None, None, None)
 
     # Test mono camera
@@ -137,7 +137,7 @@ def test_camera_feed_color_and_mono_support():
         camera.__enter__()
         cap = camera.get_capability()
 
-        assert cap.is_mono == True, "Should detect mono camera"
+        assert cap.is_mono, "Should detect mono camera"
         camera.__exit__(None, None, None)
 
 

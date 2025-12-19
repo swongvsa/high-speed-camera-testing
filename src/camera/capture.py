@@ -15,11 +15,11 @@ with proper error handling and timeout management.
 import logging
 import threading
 import time
-from typing import Iterator, Union, Optional
+from typing import Iterator, Optional, Union
 
 import numpy as np
 
-from src.camera.device import CameraDevice, CameraException
+from src.camera.device import CameraDevice, CameraError
 from src.camera.webcam import WebcamDevice
 from src.lib import mvsdk
 
@@ -127,7 +127,7 @@ def create_frame_generator(camera: Union[CameraDevice, WebcamDevice]) -> Iterato
 
     Raises:
         RuntimeError: Camera not initialized
-        CameraException: Fatal camera error (not timeout)
+        CameraError: Fatal camera error (not timeout)
 
     Contract:
         - FR-006: Continuous frame updates
@@ -146,7 +146,7 @@ def create_frame_generator(camera: Union[CameraDevice, WebcamDevice]) -> Iterato
     except StopIteration:
         logger.info("Frame generator stopped")
 
-    except CameraException as e:
+    except CameraError as e:
         # Timeouts are expected, skip frame
         if e.error_code == mvsdk.CAMERA_STATUS_TIME_OUT:
             logger.debug("Frame timeout, continuing...")

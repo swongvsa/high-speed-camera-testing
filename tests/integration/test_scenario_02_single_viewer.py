@@ -5,7 +5,6 @@ Reference: specs/001-using-gradio-as/quickstart.md Scenario 2
 Maps to FR-006a (single viewer enforcement)
 """
 
-
 from src.ui.session import ViewerSession
 
 
@@ -17,14 +16,14 @@ def test_second_viewer_blocked():
     manager = ViewerSession()
 
     # First viewer connects
-    assert manager.try_start_session("session-1") == True
+    assert manager.try_start_session("session-1")
 
     # Second viewer blocked
-    assert manager.try_start_session("session-2") == False
+    assert not manager.try_start_session("session-2")
 
     # After first ends, second can connect
     manager.end_session("session-1")
-    assert manager.try_start_session("session-2") == True
+    assert manager.try_start_session("session-2")
 
 
 def test_first_viewer_can_reconnect():
@@ -32,13 +31,13 @@ def test_first_viewer_can_reconnect():
     manager = ViewerSession()
 
     # First connection
-    assert manager.try_start_session("session-1") == True
+    assert manager.try_start_session("session-1")
 
     # Retry same session (idempotent)
-    assert manager.try_start_session("session-1") == True
+    assert manager.try_start_session("session-1")
 
     # Still blocks different session
-    assert manager.try_start_session("session-2") == False
+    assert not manager.try_start_session("session-2")
 
 
 def test_session_cleanup_allows_new_connections():
@@ -54,4 +53,4 @@ def test_session_cleanup_allows_new_connections():
     assert manager.get_active_session() is None
 
     # New session can start
-    assert manager.try_start_session("session-2") == True
+    assert manager.try_start_session("session-2")

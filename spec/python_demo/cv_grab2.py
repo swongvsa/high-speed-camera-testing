@@ -20,7 +20,7 @@ class Camera(object):
 		hCamera = 0
 		try:
 			hCamera = mvsdk.CameraInit(self.DevInfo, -1, -1)
-		except mvsdk.CameraException as e:
+		except mvsdk.CameraError as e:
 			print("CameraInit Failed({}): {}".format(e.error_code, e.message) )
 			return False
 
@@ -86,7 +86,7 @@ class Camera(object):
 			frame = np.frombuffer(frame_data, dtype=np.uint8)
 			frame = frame.reshape((FrameHead.iHeight, FrameHead.iWidth, 1 if FrameHead.uiMediaType == mvsdk.CAMERA_MEDIA_TYPE_MONO8 else 3) )
 			return frame
-		except mvsdk.CameraException as e:
+		except mvsdk.CameraError as e:
 			if e.error_code != mvsdk.CAMERA_STATUS_TIME_OUT:
 				print("CameraGetImageBuffer failed({}): {}".format(e.error_code, e.message) )
 			return None

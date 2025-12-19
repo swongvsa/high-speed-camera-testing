@@ -141,7 +141,7 @@ class TestVideoRecorderSaveClip:
 
             assert result is not None
             assert os.path.exists(result)
-            assert result.endswith('.mp4')
+            assert result.endswith(".mp4")
 
     def test_save_clip_custom_filename(self):
         """Save uses custom filename when provided."""
@@ -200,7 +200,7 @@ class TestVideoRecorderSaveClip:
             frame = np.zeros((480, 640, 3), dtype=np.uint8)
             frame[:, :, 0] = 255  # Red channel
             frame[:, :, 1] = 128  # Green channel
-            frame[:, :, 2] = 0    # Blue channel
+            frame[:, :, 2] = 0  # Blue channel
 
             for _ in range(5):
                 recorder.add_frame(frame)
@@ -221,7 +221,7 @@ class TestVideoRecorderCleanup:
             recorder = VideoRecorder(
                 max_duration_sec=5.0,
                 output_dir=tmpdir,
-                cleanup_age_hours=0  # Immediate cleanup
+                cleanup_age_hours=0,  # Immediate cleanup
             )
 
             # Create an "old" clip file
@@ -248,7 +248,7 @@ class TestVideoRecorderCleanup:
         with tempfile.TemporaryDirectory() as tmpdir:
             new_dir = os.path.join(tmpdir, "new_clips_dir")
 
-            recorder = VideoRecorder(max_duration_sec=5.0, output_dir=new_dir)
+            VideoRecorder(max_duration_sec=5.0, output_dir=new_dir)
 
             assert os.path.exists(new_dir)
             assert os.path.isdir(new_dir)

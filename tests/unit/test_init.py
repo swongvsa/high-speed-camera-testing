@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.camera.device import CameraDevice, CameraException, CameraInfo
+from src.camera.device import CameraDevice, CameraError, CameraInfo
 from src.camera.init import initialize_camera
 from src.lib import mvsdk
 
@@ -76,7 +76,7 @@ def test_initialize_camera_init_failure(mock_mvsdk):
         ]
 
         with patch("src.camera.device.CameraDevice.__enter__") as mock_enter:
-            mock_enter.side_effect = CameraException("Init failed", mvsdk.CAMERA_STATUS_FAILED)
+            mock_enter.side_effect = CameraError("Init failed", mvsdk.CAMERA_STATUS_FAILED)
 
             # Action: Initialize
             camera, error = initialize_camera()
@@ -89,7 +89,7 @@ def test_initialize_camera_init_failure(mock_mvsdk):
 
 def test_initialize_camera_access_denied():
     """Camera already in use"""
-    from src.camera.device import CameraAccessDenied
+    from src.camera.device import CameraAccessDeniedError
 
     # Setup: Camera in use
     with patch("src.camera.init.enumerate_all_cameras") as mock_enum:
@@ -103,7 +103,7 @@ def test_initialize_camera_access_denied():
         ]
 
         with patch("src.camera.device.CameraDevice.__enter__") as mock_enter:
-            mock_enter.side_effect = CameraAccessDenied(
+            mock_enter.side_effect = CameraAccessDeniedError(
                 "Camera in use", mvsdk.CAMERA_STATUS_ACCESS_DENY
             )
 

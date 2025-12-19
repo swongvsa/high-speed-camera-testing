@@ -19,7 +19,7 @@ def main():
 	hCamera = 0
 	try:
 		hCamera = mvsdk.CameraInit(DevInfo, -1, -1)
-	except mvsdk.CameraException as e:
+	except mvsdk.CameraError as e:
 		print("CameraInit Failed({}): {}".format(e.error_code, e.message) )
 		return
 
@@ -64,7 +64,7 @@ def main():
 			print("Save image successfully. image_size = {}X{}".format(FrameHead.iWidth, FrameHead.iHeight) )
 		else:
 			print("Save image failed. err={}".format(status) )
-	except mvsdk.CameraException as e:
+	except mvsdk.CameraError as e:
 		print("CameraGetImageBuffer failed({}): {}".format(e.error_code, e.message) )
 
 	# 关闭相机
