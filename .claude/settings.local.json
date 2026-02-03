@@ -39,7 +39,9 @@
       "WebFetch(domain:www.gradio.app)",
       "Bash(uv pip:*)",
       "mcp__serena__read_memory",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Skill(commit-commands:commit)",
+      "Skill(commit-commands:commit:*)"
     ],
     "deny": [],
     "ask": []
