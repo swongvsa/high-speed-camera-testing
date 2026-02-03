@@ -77,8 +77,9 @@ def main() -> None:
         logger.info("Creating Gradio camera application...")
         app = create_camera_app()
 
-        logger.info("Launching server on http://127.0.0.1:%s", args.port)
-        launch_app(app, server_port=args.port)
+        server_name = os.environ.get("GRADIO_SERVER_NAME", "0.0.0.0")
+        logger.info("Launching server on http://%s:%s", server_name, args.port)
+        launch_app(app, server_name=server_name, server_port=args.port)
 
 
 if __name__ == "__main__":

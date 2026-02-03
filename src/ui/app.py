@@ -597,13 +597,11 @@ def create_camera_app() -> gr.Blocks:
 
 def launch_app(
     app: gr.Blocks,
-    server_name: str = "127.0.0.1",
+    server_name: str = "0.0.0.0",
     server_port: int = 7860,
     share: bool = False,
     inbrowser: bool = True,
 ) -> None:
-    if server_name != "127.0.0.1":
-        raise ValueError("Localhost only")
     if share:
         raise ValueError("No sharing")
     logger.info(f"Launching on {server_name}:{server_port}")

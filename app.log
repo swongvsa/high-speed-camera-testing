@@ -1,0 +1,92 @@
+2026-02-03 08:53:44,410 - __main__ - INFO - Set CAMERA_IP=169.254.22.149 (from CLI)
+2026-02-03 08:53:44,410 - __main__ - INFO - Creating Gradio camera application...
+OpenCV: not authorized to capture video (status 0), requesting...
+OpenCV: camera failed to properly initialize!
+OpenCV: not authorized to capture video (status 0), requesting...
+OpenCV: camera failed to properly initialize!
+OpenCV: not authorized to capture video (status 0), requesting...
+OpenCV: camera failed to properly initialize!
+OpenCV: not authorized to capture video (status 0), requesting...
+OpenCV: camera failed to properly initialize!
+OpenCV: not authorized to capture video (status 0), requesting...
+OpenCV: camera failed to properly initialize!
+2026-02-03 08:53:45,596 - __main__ - INFO - Launching server on http://0.0.0.0:7860
+2026-02-03 08:53:45,596 - src.ui.app - INFO - Launching on 0.0.0.0:7860
+2026-02-03 08:53:46,888 - src.ui.app - INFO - 🎬 Stream function called for None (epoch: 0)
+OpenCV: out device of bound (0-3): 4
+OpenCV: camera failed to properly initialize!
+2026-02-03 08:53:55,169 - src.camera.init - WARNING - Preferred camera IP 169.254.22.149 not found. Falling back to first device.
+2026-02-03 08:53:56,419 - src.camera.init - INFO - Initialized camera: Webcam 0 (1920x1080)
+2026-02-03 08:53:56,422 - src.ui.lifecycle - INFO - Session started: 1l5du66qfac with camera: None
+2026-02-03 08:53:56,425 - src.camera.capture - INFO - Capture loop started
+2026-02-03 08:53:56,427 - src.camera.capture - INFO - Background capture session started
+2026-02-03 08:53:56,427 - src.ui.app - INFO - 📹 Camera session active: 1l5du66qfac
+2026-02-03 08:53:56,428 - src.camera.highspeed_recorder - INFO - Target FPS updated to 60.0, buffer resized to 720 frames
+2026-02-03 08:53:56,431 - src.ui.app - INFO - 🎯 Target FPS updated to 60.0
+2026-02-03 08:54:01,456 - src.camera.capture - INFO - Capture Thread: 28.2 FPS sustained (142 frames)
+2026-02-03 08:54:03,690 - src.ui.app - INFO - 🔄 Settings: {'auto_exposure': False, 'exposure_time_ms': 15, 'analog_gain': 1, 'target_fps': 60, 'playback_fps': 30, 'roi_preset': 'Full Resolution'}
+Traceback (most recent call last):
+  File "/Users/swong/dev/high-speed-camera-testing/.venv/lib/python3.13/site-packages/gradio/queueing.py", line 759, in process_events
+    response = await route_utils.call_process_api(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+    )
+    ^
+  File "/Users/swong/dev/high-speed-camera-testing/.venv/lib/python3.13/site-packages/gradio/route_utils.py", line 354, in call_process_api
+    output = await app.get_blocks().process_api(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<11 lines>...
+    )
+    ^
+  File "/Users/swong/dev/high-speed-camera-testing/.venv/lib/python3.13/site-packages/gradio/blocks.py", line 2127, in process_api
+    data = await self.postprocess_data(block_fn, result["prediction"], state)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/swong/dev/high-speed-camera-testing/.venv/lib/python3.13/site-packages/gradio/blocks.py", line 1886, in postprocess_data
+    state[block._id] = block.__class__(**kwargs)
+                       ~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "/Users/swong/dev/high-speed-camera-testing/.venv/lib/python3.13/site-packages/gradio/component_meta.py", line 189, in wrapper
+    return fn(self, **kwargs)
+TypeError: Button.__init__() got an unexpected keyword argument 'label'
+2026-02-03 08:54:06,475 - src.camera.capture - INFO - Capture Thread: 19.5 FPS sustained (98 frames)
+2026-02-03 08:54:07,794 - src.ui.app - INFO - 🔄 Settings: {'auto_exposure': True, 'exposure_time_ms': 15, 'analog_gain': 1, 'target_fps': 60, 'playback_fps': 30, 'roi_preset': 'Full Resolution'}
+Traceback (most recent call last):
+  File "/Users/swong/dev/high-speed-camera-testing/.venv/lib/python3.13/site-packages/gradio/queueing.py", line 759, in process_events
+    response = await route_utils.call_process_api(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+    )
+    ^
+  File "/Users/swong/dev/high-speed-camera-testing/.venv/lib/python3.13/site-packages/gradio/route_utils.py", line 354, in call_process_api
+    output = await app.get_blocks().process_api(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<11 lines>...
+    )
+    ^
+  File "/Users/swong/dev/high-speed-camera-testing/.venv/lib/python3.13/site-packages/gradio/blocks.py", line 2127, in process_api
+    data = await self.postprocess_data(block_fn, result["prediction"], state)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/swong/dev/high-speed-camera-testing/.venv/lib/python3.13/site-packages/gradio/blocks.py", line 1886, in postprocess_data
+    state[block._id] = block.__class__(**kwargs)
+                       ~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "/Users/swong/dev/high-speed-camera-testing/.venv/lib/python3.13/site-packages/gradio/component_meta.py", line 189, in wrapper
+    return fn(self, **kwargs)
+TypeError: Button.__init__() got an unexpected keyword argument 'label'
+2026-02-03 08:54:11,498 - src.camera.capture - INFO - Capture Thread: 27.9 FPS sustained (140 frames)
+2026-02-03 08:54:16,513 - src.camera.capture - INFO - Capture Thread: 28.3 FPS sustained (142 frames)
+2026-02-03 08:54:21,532 - src.camera.capture - INFO - Capture Thread: 22.5 FPS sustained (113 frames)
+2026-02-03 08:54:26,552 - src.camera.capture - INFO - Capture Thread: 28.3 FPS sustained (142 frames)
+2026-02-03 08:54:31,572 - src.camera.capture - INFO - Capture Thread: 28.1 FPS sustained (141 frames)
+2026-02-03 08:54:36,590 - src.camera.capture - INFO - Capture Thread: 28.3 FPS sustained (142 frames)
+2026-02-03 08:54:41,609 - src.camera.capture - INFO - Capture Thread: 27.3 FPS sustained (137 frames)
+2026-02-03 08:54:46,632 - src.camera.capture - INFO - Capture Thread: 27.7 FPS sustained (139 frames)
+2026-02-03 08:54:51,649 - src.camera.capture - INFO - Capture Thread: 27.7 FPS sustained (139 frames)
+2026-02-03 08:54:56,670 - src.camera.capture - INFO - Capture Thread: 26.7 FPS sustained (134 frames)
+2026-02-03 08:55:01,687 - src.camera.capture - INFO - Capture Thread: 27.1 FPS sustained (136 frames)
+2026-02-03 08:55:06,706 - src.camera.capture - INFO - Capture Thread: 22.5 FPS sustained (113 frames)
+2026-02-03 08:55:11,725 - src.camera.capture - INFO - Capture Thread: 27.7 FPS sustained (139 frames)
+2026-02-03 08:55:16,744 - src.camera.capture - INFO - Capture Thread: 27.1 FPS sustained (136 frames)
+2026-02-03 08:55:21,835 - src.camera.capture - INFO - Capture Thread: 26.7 FPS sustained (136 frames)
+2026-02-03 08:55:26,855 - src.camera.capture - INFO - Capture Thread: 27.3 FPS sustained (137 frames)
+2026-02-03 08:55:31,873 - src.camera.capture - INFO - Capture Thread: 28.3 FPS sustained (142 frames)
+2026-02-03 08:55:36,891 - src.camera.capture - INFO - Capture Thread: 27.3 FPS sustained (137 frames)
+2026-02-03 08:55:41,911 - src.camera.capture - INFO - Capture Thread: 27.3 FPS sustained (137 frames)

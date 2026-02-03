@@ -3,85 +3,113 @@
 Live camera feed display using Gradio web interface and MindVision MVSDK.  
 Showcases camera's maximum FPS and native resolution for demos and presentations.
 
+## Quick Start (Recommended)
+
+The easiest way to get started is using the provided deployment script:
+
+```bash
+# Clone or download the repository
+cd high-speed-camera-testing
+
+# Run the deployment script
+./deploy.sh
+```
+
+The script will:
+1. Check for Python 3.13+ (install via uv if missing)
+2. Install uv (if not present)
+3. Create a project-specific virtual environment
+4. Install all dependencies
+5. Start the application
+
+**That's it!** Open http://localhost:7860 in your browser.
+
+### Deployment Commands
+
+```bash
+./deploy.sh start      # Start the app
+./deploy.sh stop       # Stop the app
+./deploy.sh logs       # View application logs
+./deploy.sh install    # Install dependencies only
+./deploy.sh clean      # Remove venv and start fresh
+./deploy.sh check      # Check dependencies only
+```
+
 ## For Python Beginners
 
-If you're new to Python, this guide will help you set up the environment step by step. Python is a programming language, and this project runs as a Python application. We'll use a "virtual environment" to keep dependencies isolated.
+If you're new to Python or want to understand what's happening behind the scenes, here's a step-by-step guide.
 
 ### Prerequisites
 
-- Python 3.12+ (The project targets Python 3.13, but 3.12+ is supported).
-- **Recommended**: [uv](https://docs.astral.sh/uv/) - a fast Python package and version manager.
+- Python 3.13+ (The deployment script can install this for you)
+- [uv](https://docs.astral.sh/uv/) - A fast Python package and version manager
 
-### Setting Up the Environment (Recommended: uv)
+### What the Script Does
 
-We recommend using `uv` for the fastest and most reliable setup. It can automatically manage Python versions and virtual environments for you.
+The `deploy.sh` script automates the setup process:
+
+1. **Python Management**: Uses `uv` to download and install Python 3.13 if not present
+2. **Version Pinning**: Creates a `.python-version` file to lock the project to Python 3.13
+3. **Virtual Environment**: Creates an isolated Python environment in `./.venv`
+4. **Dependencies**: Installs all required packages from `pyproject.toml`
+5. **Process Management**: Runs the app in the background and tracks it with a PID file
+
+### Manual Setup (Alternative)
+
+If you prefer to set up manually:
 
 1. **Install uv**:
 
    ```bash
-   # macOS/Linux
    curl -LsSf https://astral.sh/uv/install.sh | sh
-   # Windows
-   powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
    ```
 
-2. **Install Python via uv**:
+2. **Install and Pin Python**:
 
    ```bash
    uv python install 3.13
+   uv python pin 3.13
    ```
 
-3. **Sync Project**:
+3. **Create Virtual Environment**:
 
    ```bash
-   uv sync
+   uv venv .venv
    ```
-
-   This automatically creates a virtual environment and installs all dependencies exactly as specified in `uv.lock`.
-
-4. **Run the App**:
-
-   ```bash
-   uv run python main.py
-   ```
-
----
-
-### Alternative: Manual Setup (pip)
-
-If you prefer using standard Python tools:
-
-1. **Install Python**: Download and install Python 3.12+ from [python.org](https://www.python.org/downloads/).
-
-2. **Create the virtual environment**:
-
-   ```bash
-   python -m venv .venv
-   ```
-
-3. **Activate it**:
-   - **macOS/Linux**: `source .venv/bin/activate`
-   - **Windows**: `.venv\Scripts\activate`
 
 4. **Install Dependencies**:
 
    ```bash
-   pip install -e .[dev]
+   uv pip install -e "."
    ```
 
-### Deactivating the Environment
+5. **Run the App**:
 
-When done, run `deactivate` in the terminal (if using the manual setup).
+   ```bash
+   source .venv/bin/activate
+   python main.py
+   ```
 
-Now proceed to the main installation steps below.
+### Understanding the Virtual Environment
+
+The virtual environment (`.venv/`) is an isolated Python installation just for this project. It:
+- Keeps project dependencies separate from your system Python
+- Allows different projects to use different package versions
+- Makes the project portable and reproducible
+
+**To activate manually**:
+- macOS/Linux: `source .venv/bin/activate`
+- Windows: `.venv\Scripts\activate`
+
+**To deactivate**: Type `deactivate` in your terminal.
 
 ## 🚀 Getting Started Checklist
 
 1. [ ] **Connect Hardware**: Plug in your USB or GigE camera.
-2. [ ] **Setup Environment**: Run `uv sync` (recommended) or follow the [Manual Setup](#alternative-manual-setup-pip).
+2. [ ] **Run Deployment Script**: Execute `./deploy.sh` to set up everything automatically.
 3. [ ] **Configure IP** (GigE only): Ensure your network adapter is on the same subnet (e.g., `169.254.22.100`).
-4. [ ] **Test Connection**: Run `python main.py --check` to verify the SDK detects your camera.
-5. [ ] **Launch UI**: Run `python main.py` and open `http://127.0.0.1:7860`.
+4. [ ] **Test Connection**: Run `./deploy.sh` and the script will verify camera connectivity.
+5. [ ] **Access UI**: Open `http://localhost:7860` in your browser.
 
 ## Features
 
@@ -100,6 +128,21 @@ Now proceed to the main installation steps below.
 - ✅ Raw, unprocessed camera feed for maximum performance
 
 ## Installation
+
+### One-Line Setup
+
+```bash
+./deploy.sh
+```
+
+This interactive script handles everything:
+- Installs Python 3.13 (if needed)
+- Installs uv package manager (if needed)
+- Creates virtual environment
+- Installs dependencies
+- Starts the application
+
+### Manual Verification
 
 ```bash
 # Verify SDK is present (after cloning/downloading the repo)
@@ -181,34 +224,38 @@ ls spec/Mac_sdk_m1*/lib/*.dylib    # macOS (M1/M2/M3)
 
 **Revert Network Settings:** After use, reset your Ethernet adapter to "Obtain IP automatically" to restore normal internet access.
 
-### Step 2: Run the Gradio UI
+### Step 2: Start the Application
 
-Ensure your virtual environment is activated (see "For Python Beginners" above).
+Use the deployment script (it handles the virtual environment automatically):
 
 ```bash
-# Start the application
-python main.py
+# Start with interactive menu
+./deploy.sh
 
-# For GigE cameras, specify the camera IP
-python main.py --camera-ip 169.254.22.149
+# Or start directly
+./deploy.sh start
 
-# Custom port (optional)
-python main.py --port 8080
+# Specify camera IP (GigE cameras)
+./deploy.sh start
+# Then edit .env to set CAMERA_IP=169.254.22.149
 
 # Test camera connectivity only
+source .venv/bin/activate
 python main.py --camera-ip 169.254.22.149 --check
 ```
 
-**Using uv (if installed):**
-Replace `python` with `uv run` for faster execution, e.g., `uv run python main.py`.
-
 ### Step 3: Access the Web Interface
 
-Open your browser to: [http://127.0.0.1:7860](http://127.0.0.1:7860)
+Open your browser to: [http://localhost:7860](http://localhost:7860)
 
 - ✅ Camera feed displays automatically
 - ✅ Only one viewer allowed at a time
 - ✅ Close browser tab to release camera
+
+**To stop the app:**
+```bash
+./deploy.sh stop
+```
 
 That's it! You're now streaming live video from your high-speed camera. 🎥
 
@@ -224,9 +271,28 @@ That's it! You're now streaming live video from your high-speed camera. 🎥
 
 ### Start the Application
 
-**Important:** Activate your virtual environment first (see "For Python Beginners").
+**Recommended:** Use the deployment script:
 
 ```bash
+# Start with interactive menu
+./deploy.sh
+
+# Start directly
+./deploy.sh start
+
+# Stop the app
+./deploy.sh stop
+
+# View logs
+./deploy.sh logs
+```
+
+**Manual (if preferred):**
+Ensure your virtual environment is activated first:
+
+```bash
+source .venv/bin/activate
+
 # Default: Auto-detect camera, start on port 7860
 python main.py
 
@@ -239,6 +305,17 @@ python main.py --port 8080
 # Test camera connectivity only
 python main.py --camera-ip 169.254.22.149 --check
 ```
+
+### Configuration
+
+The app reads configuration from `.env` file:
+
+```bash
+CAMERA_IP=169.254.22.149      # Your camera's IP address
+GRADIO_PORT=7860              # Web interface port
+```
+
+The deployment script creates this file automatically on first run.
 
 ### Access the Interface
 
@@ -341,6 +418,38 @@ kill -9 $(lsof -ti:7860)
 python main.py --port 7861
 ```
 
+## Deployment Script Reference
+
+The `deploy.sh` script provides a complete deployment solution:
+
+### Commands
+
+| Command | Description |
+|---------|-------------|
+| `./deploy.sh` | Interactive menu - choose start/stop/logs/install/clean |
+| `./deploy.sh start` | Start the application |
+| `./deploy.sh stop` | Stop the running application |
+| `./deploy.sh logs` | View application logs in real-time |
+| `./deploy.sh install` | Install/update dependencies only |
+| `./deploy.sh clean` | Remove virtual environment and start fresh |
+| `./deploy.sh check` | Verify all dependencies are installed |
+
+### What It Does
+
+1. **Python Management**: Uses `uv` to install Python 3.13 if not present
+2. **Version Pinning**: Creates `.python-version` file to lock Python version
+3. **Virtual Environment**: Creates isolated environment at `./.venv`
+4. **Dependencies**: Installs from `pyproject.toml` into the venv
+5. **Process Management**: Tracks running app with PID file (`.app.pid`)
+6. **Configuration**: Creates `.env` file on first run
+
+### Environment Variables
+
+Set these in your `.env` file:
+
+- `CAMERA_IP` - Camera IP address (for GigE cameras)
+- `GRADIO_PORT` - Web interface port (default: 7860)
+
 ## Development
 
 ### Project Structure
@@ -359,6 +468,14 @@ tests/
 
 ### Running Tests
 
+First, ensure your virtual environment is activated:
+
+```bash
+source .venv/bin/activate
+```
+
+Then run tests:
+
 ```bash
 # All tests (85 tests)
 pytest tests/ -v
@@ -375,7 +492,11 @@ pytest tests/unit/test_errors.py::test_no_device_found_message -v
 
 ### Code Quality
 
+Ensure virtual environment is activated:
+
 ```bash
+source .venv/bin/activate
+
 # Lint and format checks
 ruff check src tests
 
