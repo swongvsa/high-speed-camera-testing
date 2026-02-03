@@ -50,10 +50,12 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    # Set camera IP preference if provided
+    # Set camera IP preference if provided via CLI or environment
     if args.camera_ip:
         os.environ["CAMERA_IP"] = args.camera_ip
-        logger.info("Set CAMERA_IP=%s", args.camera_ip)
+        logger.info("Set CAMERA_IP=%s (from CLI)", args.camera_ip)
+    elif os.environ.get("CAMERA_IP"):
+        logger.info("Using CAMERA_IP=%s (from environment)", os.environ.get("CAMERA_IP"))
 
     if args.check:
         # Check mode: Test camera connectivity only

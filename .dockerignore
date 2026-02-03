@@ -1,0 +1,73 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv
+venv/
+ENV/
+env/
+
+# Testing
+.pytest_cache
+.coverage
+htmlcov/
+.tox
+.nox
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Large files not needed for runtime
+*.tar.gz
+*.zip
+*.dmg
+
+# Documentation (keep only essential)
+*.pdf
+*.chm
+spec/manual.txt
+spec/工业相机开发手册.pdf
+spec/linuxSDK使用说明-中文.pdf
+spec/SDK_API_CHS.chm
+
+# Logs
+*.log
+Camera/log/
+
+# Clips (mount as volume instead)
+clips/*
+!clips/.gitkeep
+
+# Node modules (if any)
+node_modules/
+.opencode/
+
+# Build artifacts
+*.egg-info/
+dist/
+build/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Feature specs (not needed at runtime)
+specs/
+
+# macOS specific SDK (not needed in Linux container)
+spec/Mac_sdk_m1(250120)/

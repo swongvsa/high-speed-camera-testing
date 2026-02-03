@@ -1,0 +1,40 @@
+# ==========================================
+# USB Camera Mode
+# ==========================================
+# Passes through USB video devices to the container
+# Usage: docker-compose -f docker-compose.usb.yml up
+# ==========================================
+
+version: "3.8"
+
+services:
+  camera-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: high-speed-camera:latest
+    container_name: camera-streaming-usb
+    ports:
+      - "7860:7860"
+    devices:
+      # USB video devices - adjust as needed for your camera
+      - /dev/video0:/dev/video0
+      - /dev/video1:/dev/video1
+      - /dev/video2:/dev/video2
+      # USB device bus access for MindVision cameras
+      - /dev/bus/usb:/dev/bus/usb
+    environment:
+      - PYTHONUNBUFFERED=1
+      - GRADIO_SERVER_NAME=0.0.0.0
+      - CAMERA_IP=${CAMERA_IP:-}
+    volumes:
+      - ./clips:/app/clips
+    restart: unless-stopped
+    # Required for USB camera access and device enumeration
+    privileged: true
+    # Alternative to privileged (more secure):
+    # cgroup: host
+    # cap_add:
+    #   - SYS_ADMIN
+    #   - NET_ADMIN

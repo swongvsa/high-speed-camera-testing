@@ -65,6 +65,9 @@ def _Init():
     bundled_macos_lib_x86 = os.path.join(
         repo_root, "spec", "macsdk(240831)", "lib", "libmvsdk.dylib"
     )
+    bundled_linux_lib = os.path.join(
+        repo_root, "spec", "Linux_sdk_x64", "lib", "x64", "libMVSDK.so"
+    )
 
     try:
         if is_win:
@@ -80,7 +83,10 @@ def _Init():
                 else:
                     _sdk = cdll.LoadLibrary("libmvsdk.dylib")
             else:
-                _sdk = cdll.LoadLibrary("libMVSDK.so")
+                if os.path.exists(bundled_linux_lib):
+                    _sdk = cdll.LoadLibrary(bundled_linux_lib)
+                else:
+                    _sdk = cdll.LoadLibrary("libMVSDK.so")
             CALLBACK_FUNC_TYPE = CFUNCTYPE
     except Exception as e:
         _sdk = None

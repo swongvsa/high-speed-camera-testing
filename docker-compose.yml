@@ -1,0 +1,92 @@
+# ==========================================
+# High-Speed Camera Testing - Docker Compose
+# ==========================================
+# Profiles:
+#   - development: Build from local source
+#   - production: Pull pre-built image from Docker Hub
+#
+# Usage:
+#   # Development (build locally)
+#   COMPOSE_PROFILES=development docker compose up
+#
+#   # Production (use pre-built image)
+#   COMPOSE_PROFILES=production docker compose up
+#
+#   # With custom .env file
+#   docker compose --env-file .env up
+# ==========================================
+
+services:
+  # Production: Pre-built image from Docker Hub
+  camera-app-production:
+    profiles: ["production"]
+    image: highspeedcamera/camera-app:latest
+    container_name: camera-streaming
+    ports:
+      - "${GRADIO_PORT:-7860}:${GRADIO_PORT:-7860}"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - GRADIO_SERVER_NAME=${GRADIO_SERVER_NAME:-0.0.0.0}
+      - GRADIO_SERVER_PORT=${GRADIO_PORT:-7860}
+      - CAMERA_IP=${CAMERA_IP:-169.254.22.149}
+      - CAMERA_PORT=${CAMERA_PORT:-8080}
+      - CLIPS_DIR=/app/clips
+    volumes:
+      - ./clips:/app/clips
+    restart: unless-stopped
+    networks:
+      - camera-network
+    command: ["--port", "${GRADIO_PORT:-7860}", "--camera-ip", "${CAMERA_IP:-169.254.22.149}"]
+
+  # Development: Build from local source
+  camera-app-dev:
+    profiles: ["development"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: high-speed-camera:dev
+    container_name: camera-streaming-dev
+    ports:
+      - "${GRADIO_PORT:-7860}:${GRADIO_PORT:-7860}"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - GRADIO_SERVER_NAME=${GRADIO_SERVER_NAME:-0.0.0.0}
+      - GRADIO_SERVER_PORT=${GRADIO_PORT:-7860}
+      - CAMERA_IP=${CAMERA_IP:-169.254.22.149}
+      - CAMERA_PORT=${CAMERA_PORT:-8080}
+      - CLIPS_DIR=/app/clips
+    volumes:
+      - ./clips:/app/clips
+    restart: unless-stopped
+    networks:
+      - camera-network
+    command: ["--port", "${GRADIO_PORT:-7860}", "--camera-ip", "${CAMERA_IP:-169.254.22.149}"]
+
+  # Webcam testing mode (no camera hardware required)
+  camera-app-webcam:
+    profiles: ["webcam"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: high-speed-camera:webcam
+    container_name: camera-streaming-webcam
+    ports:
+      - "${GRADIO_PORT:-7860}:${GRADIO_PORT:-7860}"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - GRADIO_SERVER_NAME=${GRADIO_SERVER_NAME:-0.0.0.0}
+      - GRADIO_SERVER_PORT=${GRADIO_PORT:-7860}
+      - CAMERA_IP=  # Empty to trigger webcam fallback
+      - CLIPS_DIR=/app/clips
+    volumes:
+      - ./clips:/app/clips
+    restart: unless-stopped
+    networks:
+      - camera-network
+    command: ["--port", "${GRADIO_PORT:-7860}"]
+
+networks:
+  camera-network:
+    driver: bridge
