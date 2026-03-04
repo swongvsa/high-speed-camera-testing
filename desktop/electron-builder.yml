@@ -1,0 +1,22 @@
+appId: com.internal.highspeedcamera
+productName: High Speed Camera
+
+directories:
+  output: dist
+
+mac:
+  target:
+    - target: dmg
+    - target: dir
+  arch: arm64
+  category: public.app-category.utilities
+  # Internal distribution — no notarization required
+  identity: null
+
+# Bundle the pre-built Python runtime + app files.
+# build.sh populates desktop/build/python/ before running electron-builder.
+extraResources:
+  - from: build/python
+    to: python
+    filter:
+      - "**/*"
