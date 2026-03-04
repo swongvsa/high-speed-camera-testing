@@ -1,0 +1,14 @@
+{
+  "name": "high-speed-camera",
+  "version": "1.0.0",
+  "description": "MindVision High Speed Camera Tool — macOS desktop app",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --mac --arm64"
+  },
+  "devDependencies": {
+    "electron": "^40.6.1",
+    "electron-builder": "^26.8.1"
+  }
+}

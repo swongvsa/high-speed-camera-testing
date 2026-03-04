@@ -78,8 +78,9 @@ def main() -> None:
         app = create_camera_app()
 
         server_name = os.environ.get("GRADIO_SERVER_NAME", "0.0.0.0")
+        inbrowser = not bool(os.environ.get("ELECTRON_RUN"))
         logger.info("Launching server on http://%s:%s", server_name, args.port)
-        launch_app(app, server_name=server_name, server_port=args.port)
+        launch_app(app, server_name=server_name, server_port=args.port, inbrowser=inbrowser)
 
 
 if __name__ == "__main__":
