@@ -1,0 +1,654 @@
+/* ── Reset & Base ─────────────────────────────────────────────────────────── */
+
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background: #0f1117;
+    color: #e2e8f0;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    overflow-x: hidden;
+}
+
+/* ── Connecting Overlay ──────────────────────────────────────────────────── */
+
+.connecting-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: rgba(15, 17, 23, 0.95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.connecting-overlay.hidden {
+    display: none;
+}
+
+.connecting-content {
+    text-align: center;
+}
+
+.connecting-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #2d3748;
+    border-top-color: #63b3ed;
+    border-radius: 50%;
+    margin: 0 auto 16px;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.connecting-text {
+    color: #a0aec0;
+    font-size: 14px;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+/* ── Panel Background ────────────────────────────────────────────────────── */
+
+.panel-bg {
+    background: #1a1d27;
+    border: 1px solid #2d3748;
+    border-radius: 8px;
+    padding: 12px;
+}
+
+/* ── Header Bar ──────────────────────────────────────────────────────────── */
+
+.header-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    padding: 10px 16px;
+    background: #1a1d27;
+    border: 1px solid #2d3748;
+    border-radius: 8px;
+    margin: 12px 16px;
+}
+
+/* ── Status Chips ────────────────────────────────────────────────────────── */
+
+.status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    white-space: nowrap;
+}
+
+.chip-safe    { background: #1a4731; color: #68d391; border: 1px solid #276749; }
+.chip-warning { background: #44371b; color: #f6e05e; border: 1px solid #744210; }
+.chip-danger  { background: #4a1c1c; color: #fc8181; border: 1px solid #742a2a; }
+.chip-active  { background: #1a2e4a; color: #63b3ed; border: 1px solid #2b6cb0; }
+.chip-idle    { background: #2d3748; color: #a0aec0; border: 1px solid #4a5568; }
+
+/* ── Main Layout ─────────────────────────────────────────────────────────── */
+
+.main-layout {
+    display: flex;
+    gap: 16px;
+    padding: 0 16px 16px;
+    min-height: calc(100vh - 80px);
+}
+
+.col-left {
+    flex: 6;
+    min-width: 0;
+}
+
+.col-right {
+    flex: 4;
+    min-width: 300px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* ── Viewfinder ──────────────────────────────────────────────────────────── */
+
+.viewfinder-wrap {
+    position: relative;
+    overflow: hidden;
+}
+
+.viewfinder-wrap img {
+    width: 100%;
+    height: auto;
+    display: block;
+    border: 2px solid #2d3748;
+    border-radius: 6px;
+    background: #0f1117;
+    min-height: 300px;
+    object-fit: contain;
+}
+
+/* ── Performance Metrics ─────────────────────────────────────────────────── */
+
+.perf-metrics {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 11px;
+    color: #a0aec0;
+    padding: 6px 0;
+    line-height: 1.8;
+}
+
+.perf-metrics .val      { color: #63b3ed; }
+.perf-metrics .val-ok   { color: #68d391; }
+.perf-metrics .val-warn { color: #f6e05e; }
+
+/* ── Controls ────────────────────────────────────────────────────────────── */
+
+.control-group {
+    margin-bottom: 2px;
+}
+
+.control-label {
+    display: block;
+    color: #a0aec0;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+/* ── Native Select ───────────────────────────────────────────────────────── */
+
+.native-select {
+    width: 100%;
+    padding: 8px 12px;
+    background: #1a1d27;
+    color: #e2e8f0;
+    border: 1px solid #4a5568;
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23a0aec0' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+}
+
+.native-select:hover {
+    border-color: #63b3ed;
+}
+
+.native-select:focus {
+    outline: none;
+    border-color: #63b3ed;
+    box-shadow: 0 0 0 2px rgba(99, 179, 237, 0.2);
+}
+
+.native-select option {
+    background: #1a1d27;
+    color: #e2e8f0;
+}
+
+/* ── FPS Hint ────────────────────────────────────────────────────────────── */
+
+.fps-hint {
+    color: #a0aec0;
+    font-size: 11px;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    margin-top: 4px;
+}
+
+/* ── Slowdown Preset Buttons ─────────────────────────────────────────────── */
+
+.preset-row {
+    display: flex;
+    gap: 6px;
+    margin: 4px 0;
+    flex-wrap: wrap;
+}
+
+.preset-btn {
+    flex: 1;
+    min-width: 48px;
+    padding: 10px 6px;
+    background: #1a1d27;
+    color: #e2e8f0;
+    border: 1px solid #4a5568;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-family: inherit;
+}
+
+.preset-btn:hover:not(.preset-btn-dim) {
+    border-color: #63b3ed;
+    color: #63b3ed;
+}
+
+.preset-btn-active {
+    background: #1a2e4a !important;
+    border-color: #2b6cb0 !important;
+    color: #63b3ed !important;
+}
+
+.preset-btn-dim {
+    opacity: 0.35;
+    cursor: default;
+}
+
+/* ── Settings Disclosure Card ────────────────────────────────────────────── */
+
+.disclosure-card {
+    background: #161921;
+    border: 1px solid #2d3748;
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin: 6px 0;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 12px;
+}
+
+.disclosure-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 3px 0;
+    color: #a0aec0;
+}
+
+.disclosure-row .dv {
+    color: #63b3ed;
+    font-weight: 600;
+}
+
+/* ── Methods Citation Card ───────────────────────────────────────────────── */
+
+.methods-card {
+    background: #0d1f17;
+    border: 1px solid #276749;
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin: 8px 0;
+}
+
+.methods-label {
+    color: #68d391;
+    font-size: 11px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    text-transform: uppercase;
+}
+
+.methods-text {
+    color: #e2e8f0;
+    font-size: 12px;
+    line-height: 1.6;
+    margin-bottom: 8px;
+    font-style: italic;
+}
+
+.copy-btn {
+    padding: 5px 14px;
+    background: #276749;
+    color: #68d391;
+    border: 1px solid #2f855a;
+    border-radius: 5px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.copy-btn:hover {
+    background: #2f855a;
+}
+
+/* ── Advanced Settings Accordion ─────────────────────────────────────────── */
+
+.advanced-accordion {
+    background: #1a1d27;
+    border: 1px solid #2d3748;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.accordion-summary {
+    padding: 10px 14px;
+    color: #a0aec0;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+.accordion-summary::-webkit-details-marker {
+    display: none;
+}
+
+.accordion-summary::before {
+    content: '\25B6';
+    display: inline-block;
+    margin-right: 8px;
+    font-size: 10px;
+    transition: transform 0.2s;
+}
+
+details[open] .accordion-summary::before {
+    transform: rotate(90deg);
+}
+
+.accordion-body {
+    padding: 8px 14px 14px;
+    border-top: 1px solid #2d3748;
+}
+
+/* ── Checkbox ────────────────────────────────────────────────────────────── */
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #e2e8f0;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: #63b3ed;
+    cursor: pointer;
+}
+
+/* ── Range Slider ────────────────────────────────────────────────────────── */
+
+.native-range {
+    width: 100%;
+    height: 6px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: #2d3748;
+    border-radius: 3px;
+    outline: none;
+    margin: 6px 0;
+}
+
+.native-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    background: #63b3ed;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid #1a1d27;
+}
+
+.native-range::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    background: #63b3ed;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid #1a1d27;
+}
+
+/* ── Exposure Safety ─────────────────────────────────────────────────────── */
+
+.safety-safe    { color: #68d391; font-size: 12px; margin-top: 4px; }
+.safety-warning { color: #f6e05e; font-size: 12px; margin-top: 4px; }
+.safety-danger  { color: #fc8181; font-size: 12px; margin-top: 4px; font-weight: 600; }
+
+/* ── Buffer Bar ──────────────────────────────────────────────────────────── */
+
+.buffer-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #a0aec0;
+    margin-bottom: 4px;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+.buffer-bar-wrap {
+    width: 100%;
+    background: #2d3748;
+    border-radius: 4px;
+    height: 8px;
+    overflow: hidden;
+    margin: 4px 0;
+}
+
+.buffer-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s ease;
+    background: linear-gradient(90deg, #2b6cb0, #63b3ed);
+}
+
+.buffer-bar-fill.full {
+    background: linear-gradient(90deg, #276749, #68d391);
+}
+
+/* ── Duration Preset Buttons ─────────────────────────────────────────────── */
+
+.dur-row {
+    display: flex;
+    gap: 8px;
+    margin: 4px 0;
+}
+
+.dur-btn {
+    flex: 1;
+    padding: 10px 8px;
+    background: #1a1d27;
+    color: #a0aec0;
+    border: 1px solid #4a5568;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-family: inherit;
+}
+
+.dur-btn:hover {
+    border-color: #63b3ed;
+    color: #63b3ed;
+}
+
+.dur-btn-active {
+    background: #1a2e4a !important;
+    border-color: #2b6cb0 !important;
+    color: #63b3ed !important;
+}
+
+/* ── Output Duration Card ────────────────────────────────────────────────── */
+
+.output-duration-card {
+    background: #0f1117;
+    border: 1px solid #2d3748;
+    border-radius: 8px;
+    padding: 14px;
+    margin: 8px 0;
+    text-align: center;
+}
+
+.output-dur-label {
+    color: #718096;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    text-transform: uppercase;
+}
+
+.output-dur-value {
+    color: #e2e8f0;
+    font-size: 28px;
+    font-weight: 700;
+    margin: 4px 0;
+}
+
+.output-dur-sub {
+    color: #718096;
+    font-size: 12px;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+/* ── Record Button ───────────────────────────────────────────────────────── */
+
+.record-btn {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: inherit;
+}
+
+.record-btn-ready {
+    background: linear-gradient(135deg, #276749, #2f855a);
+    color: #68d391;
+    border: 1px solid #276749;
+}
+
+.record-btn-ready:hover {
+    background: linear-gradient(135deg, #2f855a, #38a169);
+}
+
+.record-btn-disabled {
+    background: #2d3748;
+    color: #718096;
+    cursor: default;
+    border: 1px solid #4a5568;
+}
+
+.record-btn-saving {
+    background: #44371b;
+    color: #f6e05e;
+    cursor: default;
+    border: 1px solid #744210;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+/* ── Save Panel ──────────────────────────────────────────────────────────── */
+
+.save-panel {
+    margin: 8px 0;
+}
+
+.save-panel-saved {
+    background: #0d1f17;
+    border: 1px solid #276749;
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+}
+
+.save-check {
+    font-size: 32px;
+    margin-bottom: 4px;
+}
+
+.save-title {
+    color: #68d391;
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.save-subtitle {
+    color: #a0aec0;
+    font-size: 13px;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    margin-bottom: 12px;
+}
+
+.save-another-btn {
+    padding: 8px 18px;
+    background: #1a1d27;
+    color: #a0aec0;
+    border: 1px solid #4a5568;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    margin-top: 4px;
+    font-family: inherit;
+}
+
+.save-another-btn:hover {
+    border-color: #63b3ed;
+    color: #63b3ed;
+}
+
+.save-panel-error {
+    color: #fc8181;
+    font-size: 12px;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    padding: 8px 0;
+}
+
+/* ── Clip Preview ────────────────────────────────────────────────────────── */
+
+.clip-video {
+    width: 100%;
+    border-radius: 6px;
+    border: 1px solid #2d3748;
+    margin-bottom: 8px;
+}
+
+.clip-download-link {
+    display: inline-block;
+    padding: 8px 16px;
+    background: #1a2e4a;
+    color: #63b3ed;
+    border: 1px solid #2b6cb0;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    font-family: inherit;
+}
+
+.clip-download-link:hover {
+    background: #2b6cb0;
+    color: #e2e8f0;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+    .main-layout {
+        flex-direction: column;
+    }
+
+    .col-left,
+    .col-right {
+        flex: 1;
+        min-width: 0;
+    }
+}

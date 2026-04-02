@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>High-Speed Camera</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Inline fallback — if external CSS fails to load in WKWebView */
+        body { background: #0f1117; color: #e2e8f0; margin: 0; font-family: -apple-system, sans-serif; }
+    </style>
+</head>
+<body>
+    <!-- Connecting overlay -->
+    <div id="connecting-overlay" class="connecting-overlay">
+        <div class="connecting-content">
+            <div class="connecting-spinner"></div>
+            <div class="connecting-text">Connecting to camera service...</div>
+        </div>
+    </div>
+
+    <!-- Header bar with status chips -->
+    <div class="header-bar" id="header-bar">
+        <span id="chip-camera" class="status-chip chip-danger">No Camera</span>
+        <span id="chip-resolution" class="status-chip chip-idle">816x312</span>
+        <span id="chip-fps" class="status-chip chip-idle">0/0 FPS</span>
+        <span id="chip-exposure" class="status-chip chip-idle">--ms</span>
+        <span id="chip-buffer" class="status-chip chip-idle">0%</span>
+    </div>
+
+    <!-- Main two-column layout -->
+    <div class="main-layout">
+        <!-- LEFT column: Viewfinder + metrics -->
+        <div class="col-left">
+            <div class="viewfinder-wrap panel-bg">
+                <img id="viewfinder" src="" alt="Camera stream" />
+            </div>
+            <div id="perf-metrics" class="perf-metrics">
+                Target: <span class="val">--</span> fps &nbsp;|&nbsp;
+                Capture: <span class="val">--</span> fps &nbsp;|&nbsp;
+                Preview: <span class="val">--</span> fps
+            </div>
+        </div>
+
+        <!-- RIGHT column: Controls -->
+        <div class="col-right">
+            <!-- Camera source -->
+            <div class="control-group">
+                <label class="control-label" for="camera-select">Camera Source</label>
+                <select id="camera-select" class="native-select">
+                    <option value="">No cameras found</option>
+                </select>
+            </div>
+
+            <!-- ROI preset -->
+            <div class="control-group">
+                <label class="control-label" for="roi-select">ROI Preset</label>
+                <select id="roi-select" class="native-select">
+                    <!-- Options populated dynamically from /api/config on startup -->
+                </select>
+                <div id="fps-hint" class="fps-hint">Max ~3000 FPS for Half Height (Fast)</div>
+            </div>
+
+            <!-- Slowdown preset buttons -->
+            <div class="control-group">
+                <label class="control-label">Slow-Motion Factor</label>
+                <div id="slowdown-presets" class="preset-row">
+                    <button class="preset-btn" data-factor="2">2x</button>
+                    <button class="preset-btn" data-factor="4">4x</button>
+                    <button class="preset-btn preset-btn-active" data-factor="8">8x</button>
+                    <button class="preset-btn" data-factor="16">16x</button>
+                    <button class="preset-btn" data-factor="32">32x</button>
+                </div>
+            </div>
+
+            <!-- Settings disclosure card -->
+            <div id="disclosure-card" class="disclosure-card">
+                <div class="disclosure-row"><span>Capture Rate</span><span class="dv" id="disc-fps">240 fps</span></div>
+                <div class="disclosure-row"><span>Shutter Speed</span><span class="dv" id="disc-shutter">1/240s</span></div>
+                <div class="disclosure-row"><span>Resolution</span><span class="dv" id="disc-resolution">816x312 px</span></div>
+                <div class="disclosure-row"><span>Playback</span><span class="dv" id="disc-playback">30 fps</span></div>
+                <div class="disclosure-row"><span>Actual Slowdown</span><span class="dv" id="disc-factor">8x</span></div>
+            </div>
+
+            <!-- Methods citation card -->
+            <div class="methods-card">
+                <div class="methods-label">For Your Methods Section</div>
+                <div class="methods-text" id="methods-text"></div>
+                <button class="copy-btn" id="copy-citation-btn">Copy</button>
+            </div>
+
+            <!-- Advanced Settings accordion -->
+            <details class="advanced-accordion">
+                <summary class="accordion-summary">Advanced Settings</summary>
+                <div class="accordion-body">
+                    <div class="control-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="auto-exposure-cb" />
+                            <span>Auto Exposure</span>
+                        </label>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label" for="exposure-slider">
+                            Exposure: <span id="exposure-value">8.33</span> ms
+                        </label>
+                        <input type="range" id="exposure-slider" class="native-range"
+                               min="0.05" max="100" step="0.05" value="8.33" />
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label" for="gain-slider">
+                            Gain: <span id="gain-value">1.0</span>x
+                        </label>
+                        <input type="range" id="gain-slider" class="native-range"
+                               min="1.0" max="16.0" step="0.1" value="1.0" />
+                    </div>
+                    <div id="exposure-safety" class="safety-safe">Exposure OK</div>
+                </div>
+            </details>
+
+            <!-- Buffer progress -->
+            <div class="control-group">
+                <div class="buffer-header">
+                    <span>Buffer</span>
+                    <span id="buffer-text">0.0s / 10.0s &middot; 0%</span>
+                </div>
+                <div class="buffer-bar-wrap">
+                    <div id="buffer-bar-fill" class="buffer-bar-fill" style="width: 0%;"></div>
+                </div>
+            </div>
+
+            <!-- Duration preset buttons -->
+            <div class="control-group">
+                <label class="control-label">Clip Duration</label>
+                <div id="duration-presets" class="dur-row">
+                    <button class="dur-btn" data-dur="2">2s</button>
+                    <button class="dur-btn" data-dur="3">3s</button>
+                    <button class="dur-btn dur-btn-active" data-dur="5">5s</button>
+                    <button class="dur-btn" data-dur="7">7s</button>
+                    <button class="dur-btn" data-dur="10">10s</button>
+                </div>
+            </div>
+
+            <!-- Output duration card -->
+            <div id="output-duration-card" class="output-duration-card">
+                <div class="output-dur-label">Your clip will be</div>
+                <div class="output-dur-value" id="output-dur-value">40 seconds</div>
+                <div class="output-dur-sub" id="output-dur-sub">of slow-motion video from 5s of real footage</div>
+            </div>
+
+            <!-- Record button -->
+            <button id="record-btn" class="record-btn record-btn-disabled">Connect Camera First</button>
+
+            <!-- Post-save panel (hidden by default) -->
+            <div id="save-panel" class="save-panel" style="display: none;">
+                <div id="save-panel-content"></div>
+            </div>
+
+            <!-- Clip preview (hidden by default) -->
+            <div id="clip-preview" style="display: none;">
+                <video id="clip-video" class="clip-video" controls crossorigin="anonymous" playsinline></video>
+                <button id="clip-download" class="clip-download-link">Show in Finder</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
