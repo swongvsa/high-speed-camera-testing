@@ -59,9 +59,16 @@ def _Init():
     is_x86 = platform.architecture()[0] == "32bit"
 
     repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-    bundled_macos_lib_arm64 = os.path.join(
-        repo_root, "spec", "Mac_sdk_m1(250120)", "lib", "libmvsdk.dylib"
-    )
+
+    # When running inside an Electron .app bundle, HSCAM_BUNDLE_PATH points to
+    # the directory where libmvsdk.dylib was copied during the build step.
+    _bundle_path = os.environ.get("HSCAM_BUNDLE_PATH")
+    if _bundle_path:
+        bundled_macos_lib_arm64 = os.path.join(_bundle_path, "libmvsdk.dylib")
+    else:
+        bundled_macos_lib_arm64 = os.path.join(
+            repo_root, "spec", "Mac_sdk_m1(250120)", "lib", "libmvsdk.dylib"
+        )
     bundled_macos_lib_x86 = os.path.join(
         repo_root, "spec", "macsdk(240831)", "lib", "libmvsdk.dylib"
     )

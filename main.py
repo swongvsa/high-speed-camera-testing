@@ -2,12 +2,10 @@
 Entry point for the high-speed camera testing app.
 
 Usage:
-  python main.py                                    # Start Gradio UI on default port 7860
+  python main.py                                    # Start HTTP service on default port 7860
   python main.py --port 8080                        # Start on custom port
   python main.py --camera-ip 169.254.22.149         # Prefer specific camera IP
   python main.py --camera-ip 169.254.22.149 --check # Test camera connectivity only
-
-Maps to FR-001 through FR-012 functional requirements.
 """
 
 from __future__ import annotations
@@ -18,23 +16,17 @@ import os
 from typing import Optional
 
 from src.camera.init import initialize_camera
-from src.ui.app import create_camera_app, launch_app
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
-# Suppress verbose third-party logs
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
 def main() -> None:
-    """Main entry point for the camera application.
-
-    Parses command-line arguments and either checks camera connectivity
-    or launches the Gradio UI.
-    """
+    """Main entry point for the camera application."""
     parser = argparse.ArgumentParser(description="Camera Feed Display Application")
     parser.add_argument("--port", type=int, default=7860, help="Server port (default: 7860)")
     parser.add_argument(
@@ -50,7 +42,6 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    # Set camera IP preference if provided via CLI or environment
     if args.camera_ip:
         os.environ["CAMERA_IP"] = args.camera_ip
         logger.info("Set CAMERA_IP=%s (from CLI)", args.camera_ip)
@@ -58,12 +49,10 @@ def main() -> None:
         logger.info("Using CAMERA_IP=%s (from environment)", os.environ.get("CAMERA_IP"))
 
     if args.check:
-        # Check mode: Test camera connectivity only
         preferred: Optional[str] = args.camera_ip or os.environ.get("CAMERA_IP")
         camera, error = initialize_camera(preferred)
         if camera:
             logger.info("Camera initialized successfully: %s", camera)
-            # Immediately clean up (we only checked connectivity)
             camera.__exit__(None, None, None)
             logger.info("Camera cleaned up after check")
         else:
@@ -73,14 +62,10 @@ def main() -> None:
                 "on the same link-local network."
             )
     else:
-        # Launch Gradio UI (FR-001 to FR-012)
-        logger.info("Creating Gradio camera application...")
-        app = create_camera_app()
+        from src.ui.server import run_server
 
-        server_name = os.environ.get("GRADIO_SERVER_NAME", "0.0.0.0")
-        inbrowser = not bool(os.environ.get("ELECTRON_RUN"))
-        logger.info("Launching server on http://%s:%s", server_name, args.port)
-        launch_app(app, server_name=server_name, server_port=args.port, inbrowser=inbrowser)
+        logger.info("Starting camera HTTP service on port %s...", args.port)
+        run_server(port=args.port)
 
 
 if __name__ == "__main__":

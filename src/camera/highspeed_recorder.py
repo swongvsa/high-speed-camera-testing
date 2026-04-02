@@ -104,7 +104,9 @@ class HighSpeedRecorder:
             new_max = int(fps * self.buffer_duration_sec * 1.2)
             # Recreate buffer with new max size
             old_frames = list(self._buffer)
-            self._buffer = deque(old_frames, maxlen=new_max)
+            # Keep the most recent frames when shrinking — deque(iterable, maxlen) fills
+            # from the left, so we must slice to the tail before resizing.
+            self._buffer = deque(old_frames[-new_max:] if new_max < len(old_frames) else old_frames, maxlen=new_max)
             logger.info(f"Target FPS updated to {fps}, buffer resized to {new_max} frames")
 
     def add_frame(self, frame: np.ndarray) -> None:
@@ -282,10 +284,13 @@ class HighSpeedRecorder:
 
             output_path = self.output_dir / filename
 
-        # Write video (outside lock)
+        # Write video atomically: write to .tmp then rename on success so a mid-write
+        # SIGTERM never leaves a corrupt file at the final path.
+        tmp_path = output_path.with_suffix(".tmp.mp4")
         try:
-            success = self._write_slowmo_video(source_frames, output_path, playback_fps)
+            success = self._write_slowmo_video(source_frames, tmp_path, playback_fps)
             if success:
+                tmp_path.rename(output_path)
                 logger.info(
                     f"Saved slow-mo clip: {output_path} "
                     f"({len(source_frames)} frames @ {capture_fps:.1f}fps capture, "
@@ -297,6 +302,13 @@ class HighSpeedRecorder:
         except Exception as e:
             logger.error(f"Failed to save slow-mo clip: {e}")
             return None
+        finally:
+            # Remove the temp file if it still exists (write failed or rename errored).
+            if tmp_path.exists():
+                try:
+                    tmp_path.unlink()
+                except OSError:
+                    pass
 
     def _write_slowmo_video(
         self,
@@ -323,8 +335,9 @@ class HighSpeedRecorder:
         height, width = first_frame.shape[:2]
         is_color = len(first_frame.shape) == 3 and first_frame.shape[2] == 3
 
-        # Use H.264 codec for better compatibility
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # type: ignore[attr-defined]
+        # Use H.264 (avc1) on macOS for browser/WKWebView compatibility.
+        # Falls back to mp4v if avc1 isn't available.
+        fourcc = cv2.VideoWriter_fourcc(*"avc1")  # type: ignore[attr-defined]
         writer = cv2.VideoWriter(
             str(output_path), fourcc, playback_fps, (width, height), isColor=is_color
         )

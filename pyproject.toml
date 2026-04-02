@@ -1,12 +1,13 @@
 [project]
 name = "high-speed-camera-testing"
-version = "0.1.0"
-description = "Camera feed display using Gradio and MVSDK"
+version = "0.2.0"
+description = "Camera feed display using FastAPI and MVSDK"
 requires-python = ">=3.12"
 dependencies = [
-    "gradio>=4.0",
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
     "numpy>=1.24",
-    "opencv-python>=4.8",
+    "opencv-python-headless>=4.8",
 ]
 
 [tool.ty.environment]
