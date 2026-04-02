@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -la /Users/swong/dev/high-speed-camera-testing/desktop/dist/ 2>/dev/null && echo \"---\" && find /Users/swong/dev/high-speed-camera-testing/desktop/dist/ -name \"*.app\" -type d 2>/dev/null | head -3)",
+      "Read(//private/tmp/**)",
+      "Bash(tar --zstd -tf /Users/swong/dev/high-speed-camera-testing/desktop/artifacts/stable-macos-arm64-HighSpeedCamera.app.tar.zst)",
+      "Bash(zstd -d -c /Users/swong/dev/high-speed-camera-testing/desktop/artifacts/stable-macos-arm64-HighSpeedCamera.app.tar.zst | tar -tf - 2>/dev/null | grep -i python | head -20)",
+      "Bash(zstd -d -c /Users/swong/dev/high-speed-camera-testing/desktop/artifacts/stable-macos-arm64-HighSpeedCamera.app.tar.zst | tar -tf - 2>/dev/null | head -40)",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__query-docs",
+      "Bash(ls /Users/swong/dev/high-speed-camera-testing/spec/Mac_sdk_m1\\\\\\(250120\\\\\\)/)",
+      "Bash(ls /Users/swong/dev/high-speed-camera-testing/spec/Mac_sdk_m1\\\\\\(250120\\\\\\)/lib/)",
+      "Bash(xxd /Users/swong/dev/high-speed-camera-testing/desktop/scripts/build.sh | grep -A1 \"PYTHON_DIR\")",
+      "Bash(grep -n '\\\\$[A-Z_]*…' /Users/swong/dev/high-speed-camera-testing/desktop/scripts/build.sh)"
+    ]
+  }
+}

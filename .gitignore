@@ -34,3 +34,9 @@ clips/
 
 # Camera logs
 Camera/log/
+
+# Electron desktop build artifacts
+desktop/node_modules/
+desktop/dist/
+desktop/build/
+desktop/.cache/
