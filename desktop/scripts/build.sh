@@ -31,15 +31,11 @@ ok()      { echo -e "${GREEN}✓${NC} $*"; }
 # ─── Step 1: Prerequisites ───────────────────────────────────────────────────
 info "Checking prerequisites…"
 
-command -v node >/dev/null 2>&1 || error "node not found. Install Node.js 20+ from https://nodejs.org"
-command -v npm  >/dev/null 2>&1 || error "npm not found. Install Node.js 20+ from https://nodejs.org"
+command -v bun  >/dev/null 2>&1 || error "bun not found. Install with: curl -fsSL https://bun.sh/install | bash"
 command -v uv   >/dev/null 2>&1 || error "uv not found. Install with: curl -LsSf https://astral.sh/uv/install.sh | sh"
 
-NODE_MAJOR=$(node --version | sed 's/v\([0-9]*\).*/\1/')
-if [[ "$NODE_MAJOR" -lt 20 ]]; then
-  error "Node.js 20+ required (found $(node --version))"
-fi
-ok "node $(node --version), npm $(npm --version), uv $(uv --version)"
+BUN_VER=$(bun --version)
+ok "bun $BUN_VER, uv $(uv --version)"
 
 # ─── Step 2: Check libmvsdk.dylib ───────────────────────────────────────────
 info "Checking for libmvsdk.dylib (ARM64)…"
@@ -63,7 +59,7 @@ else
 fi
 
 # ─── Step 4: Extract Python runtime ─────────────────────────────────────────
-info "Extracting Python runtime to $PYTHON_DIR…"
+info "Extracting Python runtime to ${PYTHON_DIR}…"
 rm -rf "$PYTHON_DIR"
 mkdir -p "$PYTHON_DIR"
 tar -xzf "$PBS_CACHE" -C "$PYTHON_DIR" --strip-components=1
@@ -76,14 +72,15 @@ PYTHON_BIN="$PYTHON_DIR/bin/python3"
 info "Installing Python dependencies into bundled runtime…"
 uv pip install \
   --python "$PYTHON_BIN" \
-  gradio \
+  fastapi \
+  "uvicorn[standard]" \
   numpy \
   "opencv-python-headless" \
   || error "uv pip install failed"
 ok "Dependencies installed"
 
 # ─── Step 6: Copy application files ─────────────────────────────────────────
-info "Copying application files to $APP_DIR…"
+info "Copying application files to ${APP_DIR}…"
 rm -rf "$APP_DIR"
 mkdir -p "$APP_DIR"
 
@@ -95,17 +92,22 @@ cp -r "$REPO_ROOT/src"       "$APP_DIR/src"
 # Copy libmvsdk.dylib into the app directory
 cp "$MVSDK_SRC" "$APP_DIR/libmvsdk.dylib"
 chmod +x "$APP_DIR/libmvsdk.dylib"
+# Remove macOS quarantine xattr so the dylib loads without Gatekeeper blocking
+# it. right-click-open on the .app only clears the xattr on the bundle root,
+# not on files nested inside Contents/Resources/. Without this, ctypes will
+# silently fail to load the SDK on any freshly-downloaded copy of the app.
+xattr -dr com.apple.quarantine "$APP_DIR/libmvsdk.dylib" 2>/dev/null || true
 
 ok "Application files copied"
 
-# ─── Step 7: npm install + electron-builder ──────────────────────────────────
-info "Installing npm dependencies…"
+# ─── Step 7: bun install + electrobun build ──────────────────────────────────
+info "Installing bun dependencies…"
 cd "$DESKTOP_DIR"
-npm install --prefer-offline
-ok "npm install complete"
+bun install
+ok "bun install complete"
 
-info "Building Electron app (this may take a few minutes)…"
-npm run build
+info "Building Electrobun app (this may take a few minutes)…"
+bun run build:stable
 ok "Build complete"
 
 # ─── Done ────────────────────────────────────────────────────────────────────
@@ -119,4 +121,4 @@ echo "Output:"
 ls "$DIST"/*.dmg 2>/dev/null && true
 ls -d "$DIST"/*.app 2>/dev/null && true
 echo ""
-echo "To install: mount the .dmg and drag 'High Speed Camera.app' to /Applications"
+echo "To install: open the .dmg and drag 'High Speed Camera.app' to /Applications"

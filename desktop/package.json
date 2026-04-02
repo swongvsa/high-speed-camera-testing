@@ -1,14 +1,13 @@
 {
-  "name": "high-speed-camera",
-  "version": "1.0.0",
-  "description": "MindVision High Speed Camera Tool — macOS desktop app",
-  "main": "main.js",
+  "name": "high-speed-camera-desktop",
+  "private": true,
   "scripts": {
-    "start": "electron .",
-    "build": "electron-builder --mac --arm64"
+    "start":        "electrobun run",
+    "dev":          "electrobun dev",
+    "build:dev":    "bun install && electrobun build",
+    "build:stable": "electrobun build --env=stable"
   },
-  "devDependencies": {
-    "electron": "^40.6.1",
-    "electron-builder": "^26.8.1"
+  "dependencies": {
+    "electrobun": "^1.0.0"
   }
 }
